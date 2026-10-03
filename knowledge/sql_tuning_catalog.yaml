@@ -1,0 +1,2090 @@
+catalog_version: 2.0
+product: OraProbe
+scope: SQL Query Tuning Knowledge Specification
+oracle_target: 19c
+implementation_status: knowledge-only
+catalog_status: v2-specification
+
+taxonomy:
+  domains:
+    - code: AP
+      name: Access Path
+    - code: CARD
+      name: Cardinality and Statistics
+    - code: JOIN
+      name: Join and Set Operations
+    - code: SORT
+      name: Sort and Aggregation
+    - code: SUBQ
+      name: Subquery and Query Transformation
+    - code: CUR
+      name: Cursor and Plan Stability
+    - code: PAR
+      name: Parallelism and Resource Profile
+    - code: PART
+      name: Partitioning and Segment Scope
+    - code: IDX
+      name: Index and Object Design
+    - code: PRED
+      name: Predicate and Bind Behavior
+    - code: DATA
+      name: Data and Workload Shape
+    - code: EXT
+      name: External Contributors
+
+rules:
+  - id: AP-001
+    name: Full scan not justified by row set or predicate
+    domain: AP
+    classification: [root-cause-candidate, symptom]
+    problem_description: A full scan is chosen even though the predicate and object shape suggest a smaller, more selective read pattern.
+    why_it_matters: Large scans can multiply logical reads, physical I/O, and CPU cost.
+    required_evidence:
+      - SQL text
+      - execution plan
+      - table row count
+      - predicate values
+      - estimated vs actual rows
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: DBA_TABLES, license: base}
+      - {source: DBMS_XPLAN, license: base}
+    detection_conditions:
+      - full-table-scan operation is present on an object that is not obviously bulk-read by design
+      - predicate appears selective or highly selective
+      - actual rows are much lower than scan volume suggests
+    counter_evidence:
+      - object is intentionally read in bulk
+      - row source is a small table or a partitioned table with a valid broad-range read
+      - parallel full scan is clearly the cheapest approach by runtime evidence
+    false_positive_risks:
+      - scanning a large object can be legitimate when business logic requires most rows
+      - large partition scans can be correct under broad range predicates
+    confidence_logic:
+      - low when evidence is sparse
+      - medium when plan and row counts suggest an inefficient access pattern
+      - high only when the SQL repeatedly dominates runtime and a better access path is supported by evidence
+    root_cause_statement: "The plan is using a full scan instead of a more selective access path, causing unnecessary row reads and higher runtime cost."
+    recommendation: "Validate whether the predicate is truly selective; test a more aligned index or partition strategy; confirm the scan is not intentionally reading most of the object."
+    validation: "Compare plan before and after any change; check actual rows read and runtime improvement; validate against comparable workloads."
+    safety_risk: moderate
+    related_rules: [AP-002, AP-003, PRED-004, CARD-005]
+    reinforcing_rules: [CARD-001, CARD-005, PRED-003]
+    contradictory_rules: [DATA-003]
+    dependency_relationships: ["predicate structure can force this access path"]
+    evidence_availability_behavior: "If row counts or plan evidence are unavailable, mark as insufficient evidence rather than negative diagnosis."
+    oracle_version_notes: "Oracle 19c plan behavior remains consistent with general access-path guidance; newer versions may change optimizer costing, but the logic remains similar."
+    licensing_notes: "No special licensing required for the base plan and table metadata evidence."
+    source_reference: "Oracle Database 19c SQL Tuning Guide; Oracle Database Reference for V$SQL_PLAN and DBA_TABLES; Oracle optimizer documentation on access-path costing."
+
+  - id: AP-002
+    name: Missing selective access path
+    domain: AP
+    classification: [root-cause-candidate]
+    problem_description: The SQL filters on a selective condition but Oracle chooses an access method that reads too much data.
+    why_it_matters: A selective predicate should usually allow a more direct path to a smaller row set.
+    required_evidence:
+      - predicate columns
+      - index metadata
+      - plan steps
+      - object row count
+    oracle_sources:
+      - {source: DBA_INDEXES, license: base}
+      - {source: DBA_IND_COLUMNS, license: base}
+      - {source: V$SQL_PLAN, license: base}
+    detection_conditions:
+      - selective predicate present
+      - indexed or candidate access path exists but is not used
+      - row count and runtime cost indicate poor path selection
+    counter_evidence:
+      - the predicate is not selective in practice
+      - object is small or benefits from full scan
+    false_positive_risks:
+      - a selective predicate may still be cheap under a full scan
+    confidence_logic:
+      - medium when a valid alternative path exists
+      - high when the full scan repeatedly dominates runtime and a better path is evidence-backed
+    root_cause_statement: "The access path is inconsistent with the predicate selectivity, causing unnecessary row reads."
+    recommendation: "Review index design and predicate alignment before changing schema or query shape."
+    validation: "Test a plan change in a controlled environment and compare runtime and row counts."
+    safety_risk: moderate
+    related_rules: [AP-001, AP-003, PRED-001, IDX-001]
+    reinforcing_rules: [CARD-005, PRED-004]
+    contradictory_rules: [PART-001]
+    dependency_relationships: ["may be caused by predicate coercion or missing index structure"]
+    evidence_availability_behavior: "If index metadata is missing, this route cannot be evaluated with confidence."
+    oracle_version_notes: "Oracle 19c behavior is consistent with documented access-path costing."
+    licensing_notes: "Base data only."
+    source_reference: "Oracle SQL Tuning Guide; DBMS_XPLAN documentation; optimizer access-path guidance."
+
+  - id: AP-003
+    name: Index exists but is bypassed
+    domain: AP
+    classification: [root-cause-candidate, symptom]
+    problem_description: A legitimate index exists but the optimizer does not use it under a predicate pattern that should favor it.
+    why_it_matters: This may reflect poor predicate alignment, stale statistics, or a genuinely incorrect access decision.
+    required_evidence:
+      - existing index definitions
+      - predicate columns
+      - execution plan
+      - optimizer estimates
+    oracle_sources:
+      - {source: DBA_INDEXES, license: base}
+      - {source: V$SQL_PLAN, license: base}
+      - {source: DBA_TAB_STATISTICS, license: base}
+    detection_conditions:
+      - intended predicate matches index columns
+      - plan uses a less selective path
+      - cost estimates are inconsistent with expected index usage
+    counter_evidence:
+      - index is not valid for the workload
+      - object size or access pattern makes the alternate path correct
+    false_positive_risks:
+      - index may be chosen only under certain bind values
+    confidence_logic:
+      - medium when the index is valid and unused repeatedly
+      - high when multiple executions show repeated index bypass
+    root_cause_statement: "The optimizer is ignoring a valid and relevant index due to plan-shaping conditions or poor statistical fit."
+    recommendation: "Review predicate alignment, statistics, and bind behavior before changing the index."
+    validation: "Compare index usage across comparable bind sets and validate runtime improvement after a controlled change."
+    safety_risk: moderate
+    related_rules: [AP-002, AP-004, CARD-001, CUR-001]
+    reinforcing_rules: [PRED-004, PRED-003, CARD-005]
+    contradictory_rules: [IDX-002]
+    dependency_relationships: ["can be caused by implicit conversion, bind mismatch, or stale stats"]
+    evidence_availability_behavior: "If the index metadata is unavailable, the diagnosis should be downgraded to an observation."
+    oracle_version_notes: "Applies to Oracle 19c and later optimizer behavior with similar access-path principles."
+    licensing_notes: "Base data only."
+    source_reference: "Oracle SQL Tuning Guide; execution plan interpretation guidance; database reference for index metadata."
+
+  - id: AP-004
+    name: Function on indexed column blocks access path
+    domain: AP
+    classification: [root-cause-candidate]
+    problem_description: A function or expression is applied to an indexed column, preventing the optimizer from using the index efficiently.
+    why_it_matters: This is a common cause of unhelpful index bypass and sharp runtime inflation.
+    required_evidence:
+      - SQL predicate text
+      - index key columns
+      - plan filter steps
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: DBA_INDEXES, license: base}
+      - {source: DBA_IND_COLUMNS, license: base}
+    detection_conditions:
+      - predicate includes function, truncation, case conversion, or expression on the indexed column
+      - plan shows scan instead of index access
+    counter_evidence:
+      - function is applied to a constant, not to the column search key
+      - a tiny object makes the scan perfectly reasonable
+    false_positive_risks:
+      - some functions are necessary and may still be efficient on a small table
+    confidence_logic:
+      - medium when the expression clearly hits the indexed column
+      - high when the plan repeatedly shows scan and the object is not small
+    root_cause_statement: "The predicate expression defeats the index and forces a broader read pattern."
+    recommendation: "Consider a function-based index, a rewritten predicate, or a safer access-path change only after validating the business logic."
+    validation: "Test alternative predicate form and compare actual rows and elapsed time."
+    safety_risk: moderate
+    related_rules: [PRED-003, AP-005, PRED-004]
+    reinforcing_rules: [AP-003, PRED-003]
+    contradictory_rules: []
+    dependency_relationships: ["often overlaps with implicit conversion and predicate sargability issues"]
+    evidence_availability_behavior: "If the SQL text is unavailable, this rule cannot be evaluated."
+    oracle_version_notes: "The issue is common across Oracle releases because the optimizer cannot easily use the index when the column is transformed."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; predicate and access-path analysis guidance."
+
+  - id: AP-005
+    name: Implicit conversion blocks index access
+    domain: AP
+    classification: [root-cause-candidate]
+    problem_description: Oracle converts a bind or literal value to a different datatype before comparing it to a column, breaking index matching.
+    why_it_matters: The optimizer may be unable to use a useful index because of type mismatch at the predicate level.
+    required_evidence:
+      - bind datatype or literal type
+      - column datatype
+      - predicate structure
+      - plan access method
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: DBA_TAB_COL_STATISTICS, license: base}
+      - {source: V$SQL_PLAN, license: base}
+    detection_conditions:
+      - column and predicate use different or coercible datatype representations
+      - access path is inconsistent with equivalent typed predicate behavior
+    counter_evidence:
+      - the conversion is harmless because the object is small or there is already a broader scan path
+    false_positive_risks:
+      - the optimizer may still choose a sensible scan for a broad logic pattern
+    confidence_logic:
+      - medium when the coercion is evident and the access path is poor
+      - high when the issue is repeated across multiple child cursors or execution plans
+    root_cause_statement: "The predicate uses a coercion that defeats the index matching and forces a broader access path."
+    recommendation: "Match the predicate datatype to the column datatype, validate bind handling, and compare plan quality before deployment."
+    validation: "Test the same SQL with a typed bind or literal and compare the plan and runtime."
+    safety_risk: moderate
+    related_rules: [PRED-004, AP-003, PRED-005]
+    reinforcing_rules: [CUR-001, PRED-005]
+    contradictory_rules: []
+    dependency_relationships: ["often appears with bind mismatch and plan instability"]
+    evidence_availability_behavior: "If bind metadata is unavailable, the rule should be documented as unverified."
+    oracle_version_notes: "Type coercion behavior is consistent across Oracle 19c and later; the root issue is optimizer mismatch rather than a proprietary change."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; optimizer documentation on datatype conversion and predicate evaluation."
+
+  - id: CARD-001
+    name: Stale or missing statistics
+    domain: CARD
+    classification: [root-cause-candidate]
+    problem_description: Optimizer statistics are stale or absent, causing poor row estimates and a mismatched plan choice.
+    why_it_matters: Cardinality errors often drive many downstream performance problems.
+    required_evidence:
+      - table statistics timestamp
+      - table row counts
+      - estimate vs actual rows
+      - execution plan
+    oracle_sources:
+      - {source: DBA_TAB_STATISTICS, license: base}
+      - {source: DBA_TABLES, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+    detection_conditions:
+      - object has substantial DML or data skew since the last stats refresh
+      - estimated rows and actual rows differ materially
+      - plan defects align with stale-estimate symptoms
+    counter_evidence:
+      - stats are fresh and still show good estimates
+      - problem is environmental rather than optimizer estimate driven
+    false_positive_risks:
+      - a plan can still be bad even with fresh stats if the data shape is inherently difficult
+    confidence_logic:
+      - medium when the evidence clearly shows stale or absent statistics
+      - high when the estimate error lines up with a known bad plan and repeated runtime pattern
+    root_cause_statement: "The optimizer is using an inaccurate row estimate because the statistics are no longer representative of the table data."
+    recommendation: "Review and refresh statistics appropriately; validate against the workload before relying on a plan change."
+    validation: "Compare estimate-vs-actual row counts before and after stats refresh and confirm workload behavior."
+    safety_risk: low
+    related_rules: [CARD-005, CUR-004, JOIN-005]
+    reinforcing_rules: [CARD-002, CARD-003]
+    contradictory_rules: [EXT-001]
+    dependency_relationships: ["can directly trigger join order issues and plan instability"]
+    evidence_availability_behavior: "If statistics timestamps are unavailable, the rule should be downgraded to insufficient evidence."
+    oracle_version_notes: "Oracle 19c still depends strongly on representative statistics; newer optimizer features may help but do not eliminate the need for reasonable stats."
+    licensing_notes: "Base dictionary data only."
+    source_reference: "Oracle SQL Tuning Guide; Oracle optimizer documentation on statistics and cost estimation."
+
+  - id: CARD-002
+    name: Missing histogram for skewed predicate
+    domain: CARD
+    classification: [root-cause-candidate]
+    problem_description: A skewed column has no useful histogram, so the optimizer cannot estimate predicate selectivity correctly.
+    why_it_matters: Missing histograms can distort row estimates for a small number of values that dominate the workload.
+    required_evidence:
+      - histogram metadata
+      - column data distribution
+      - predicate values
+      - execution plan
+    oracle_sources:
+      - {source: DBA_HISTOGRAMS, license: base}
+      - {source: DBA_TAB_COL_STATISTICS, license: base}
+      - {source: V$SQL_PLAN, license: base}
+    detection_conditions:
+      - the predicate is on a skewed value domain
+      - histogram is absent or low-quality
+      - plan estimates are poor
+    counter_evidence:
+      - the column is nearly uniform
+      - the workload is broad enough that a histogram is not essential
+    false_positive_risks:
+      - some workloads do not need a histogram for a stable plan
+    confidence_logic:
+      - medium when skew is obvious and the optimizer estimates are poor
+      - high when the workload repeatedly uses the same skewed value pattern
+    root_cause_statement: "The optimizer lacks a representative histogram for a skewed predicate, so it is estimating cardinality poorly."
+    recommendation: "Consider a histogram or extended statistics if the column is skewed and the plan depends on a narrow value range."
+    validation: "Compare estimate-vs-actual rows before and after the histogram change in a controlled test."
+    safety_risk: low
+    related_rules: [CARD-003, CARD-005, DATA-004]
+    reinforcing_rules: [CARD-001, CUR-001]
+    contradictory_rules: [CARD-004]
+    dependency_relationships: ["often interacts with bind peeking and skewed workload values"]
+    evidence_availability_behavior: "If histogram metadata is absent but the workload is not skewed, the rule remains low confidence."
+    oracle_version_notes: "Histogram behavior is a standard Oracle 19c optimizer concept and remains relevant in newer Oracle versions."
+    licensing_notes: "Base metadata only."
+    source_reference: "Oracle SQL Tuning Guide; Oracle optimizer documentation on histograms and data skew."
+
+  - id: CARD-003
+    name: Skew not reflected in estimate
+    domain: CARD
+    classification: [symptom, root-cause-candidate]
+    problem_description: Data skew exists but the optimizer estimate does not reflect it, causing a plan mismatch.
+    why_it_matters: A small subset of values may dominate the cost, but the optimizer judges the workload as uniform.
+    required_evidence:
+      - column stats
+      - histogram info
+      - actual and estimated rows
+      - query pattern
+    oracle_sources:
+      - {source: DBA_TAB_COL_STATISTICS, license: base}
+      - {source: DBA_HISTOGRAMS, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+    detection_conditions:
+      - skew is obvious from data values
+      - estimate is materially different from actual rows for skewed values
+    counter_evidence:
+      - system is not showing heavy concentration in any value set
+    false_positive_risks:
+      - some skew is acceptable if the workload is stable and the plan remains cheap
+    confidence_logic:
+      - medium when skew is visible in the data and is reflected in poor plans
+      - high when repeated executions show the same pattern at high cost
+    root_cause_statement: "The data distribution is skewed but the optimizer estimate is not using that reality, leading to a poor plan."
+    recommendation: "Review histograms, extended stats, and distribution assumptions for the affected columns."
+    validation: "Check estimate-versus-actual rows for skewed values before and after the relevant stats change."
+    safety_risk: low
+    related_rules: [CARD-002, DATA-004, CUR-001]
+    reinforcing_rules: [CARD-001]
+    contradictory_rules: []
+    dependency_relationships: ["often appears with bind peeking and skewed column values"]
+    evidence_availability_behavior: "If distribution evidence is absent, keep the rule low confidence."
+    oracle_version_notes: "The concept applies across Oracle 19c and later."
+    licensing_notes: "Base data only."
+    source_reference: "Oracle optimizer documentation on skew, histograms, and cardinality estimation."
+
+  - id: CARD-004
+    name: Correlated predicate estimate drift
+    domain: CARD
+    classification: [root-cause-candidate]
+    problem_description: Two or more predicates are correlated but the optimizer treats them as independent, creating a poor estimate.
+    why_it_matters: Correlated predicates can drastically change cardinality and therefore drive join order or index choice.
+    required_evidence:
+      - predicate shape
+      - column statistics
+      - actual vs estimated rows
+      - SQL plan
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: DBA_TAB_COL_STATISTICS, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+    detection_conditions:
+      - multiple filters exist on related columns
+      - estimate is poor while actual rows differ materially
+    counter_evidence:
+      - the predicates are independent or have weak correlation
+    false_positive_risks:
+      - some SQL can tolerate estimate error without major cost impact
+    confidence_logic:
+      - medium when the correlation is clear and estimate error is serious
+      - high when repeated executions show the same scenario and plan regression
+    root_cause_statement: "The optimizer is treating correlated predicates as independent, which leads to inaccurate row estimates and poor access strategy."
+    recommendation: "Review extended statistics or a safer join/filter structure when the query depends on correlated values."
+    validation: "Compare estimated rows before and after applying extended statistics or rewrite changes."
+    safety_risk: low
+    related_rules: [CARD-003, JOIN-005, SUBQ-003]
+    reinforcing_rules: [CARD-005]
+    contradictory_rules: []
+    dependency_relationships: ["often shows up with join-order problems or poor partition pruning"]
+    evidence_availability_behavior: "If column statistics are insufficient, do not overstate this rule."
+    oracle_version_notes: "Relevant for Oracle 19c and newer; extended statistics are a standard response."
+    licensing_notes: "Base metadata only."
+    source_reference: "Oracle optimizer documentation on extended statistics and column correlation."
+
+  - id: CARD-005
+    name: Large estimate-to-actual mismatch
+    domain: CARD
+    classification: [symptom, root-cause-candidate]
+    problem_description: The optimizer estimate is materially different from the actual row count seen during execution.
+    why_it_matters: It often leads to poor join order, poor access path choices, and unanticipated work.
+    required_evidence:
+      - estimated rows
+      - actual rows
+      - execution statistics
+      - plan details
+    oracle_sources:
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+      - {source: V$SQL, license: base}
+      - {source: DBMS_XPLAN, license: base}
+    detection_conditions:
+      - difference between estimated and actual rows is large and consistent over repeated executions
+    counter_evidence:
+      - actual rows are not materially different and plan remains efficient
+    false_positive_risks:
+      - some estimates are intentionally rough but still acceptable
+    confidence_logic:
+      - medium when the mismatch is clear but not repeated
+      - high when the mismatch aligns with repeated poor performance and a bad plan choice
+    root_cause_statement: "The optimizer's row estimate is materially wrong, which has distorted the plan choice."
+    recommendation: "Review statistics, histograms, and plan choices before making a schema or query change."
+    validation: "Compare estimate-versus-actual rows across fresh executions after the stat or rewrite change."
+    safety_risk: low
+    related_rules: [CARD-001, CARD-002, JOIN-005, CUR-001]
+    reinforcing_rules: [CARD-003, CARD-004]
+    contradictory_rules: [EXT-001]
+    dependency_relationships: ["often drives downstream symptoms like sort spill, poor join order, or bad access path"]
+    evidence_availability_behavior: "If actual rows are unavailable, do not claim a significant mismatch."
+    oracle_version_notes: "This is a standard optimizer problem area in Oracle 19c and later."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; Oracle optimizer documentation; DBMS_XPLAN behavior."
+
+  - id: JOIN-001
+    name: Nested loops on large driving set
+    domain: JOIN
+    classification: [symptom, root-cause-candidate]
+    problem_description: Nested loops are being used on a driving set large enough to make repeated lookups excessively expensive.
+    why_it_matters: This may cause a large number of repeated indexed probes or a slow row-by-row pattern.
+    required_evidence:
+      - join method
+      - row counts at join steps
+      - execution plan
+      - runtime metrics
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+      - {source: V$SQL, license: base}
+    detection_conditions:
+      - join method is nested loops
+      - outer row count or intermediate row set is large
+      - runtime is dominated by repeated lookups or high logical I/O
+    counter_evidence:
+      - the driving set is small and runtime is not dominated by the join
+    false_positive_risks:
+      - nested loops are often appropriate when the driving set is small or the index is selective
+    confidence_logic:
+      - medium when row counts show a larger-than-expected driving set
+      - high when the pattern is repeated and the elapsed time is dominated by join work
+    root_cause_statement: "The chosen join strategy is good for a small driving set but poor for the actual row volume seen in this SQL."
+    recommendation: "Re-evaluate join order, index selectivity, and whether a hash or merge strategy would better match the actual data volume."
+    validation: "Compare alternative plans on the same data and track actual runtime and row counts."
+    safety_risk: moderate
+    related_rules: [JOIN-005, CARD-005, AP-003]
+    reinforcing_rules: [AP-003, CARD-005]
+    contradictory_rules: [JOIN-002]
+    dependency_relationships: ["often caused by poor cardinality estimates or bad index usage"]
+    evidence_availability_behavior: "If the plan is unavailable, this rule cannot be evaluated."
+    oracle_version_notes: "Standard Oracle 19c join-choice behavior; later versions may further optimize join costing but concept remains valid."
+    licensing_notes: "Base plan and runtime views only."
+    source_reference: "Oracle SQL Tuning Guide; join method and cardinality discussion; Oracle optimizer documentation."
+
+  - id: JOIN-002
+    name: Hash join spill
+    domain: JOIN
+    classification: [symptom]
+    problem_description: A hash join is spilling to disk or consuming a large share of memory, creating a costly join path.
+    why_it_matters: A hash join can be efficient at first, but spilling changes it into a much slower physical I/O pattern.
+    required_evidence:
+      - hash join steps
+      - temp usage
+      - memory settings
+      - runtime metrics
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$SQL, license: base}
+      - {source: V$TEMPSEG_USAGE, license: base}
+    detection_conditions:
+      - hash join is present
+      - temp usage or memory pressure is high
+      - runtime is dominated by the join data movement
+    counter_evidence:
+      - the data volume is small and the join is stable
+    false_positive_risks:
+      - a hash join may be perfectly appropriate on large but manageable datasets
+    confidence_logic:
+      - medium when memory or temp evidence is consistent with spill
+      - high when actual runtime spikes coincide with join spill and large workarea use
+    root_cause_statement: "The join strategy is not a poor choice in principle, but the current data volume or memory profile is causing spill and reducing efficiency."
+    recommendation: "Review join cardinality, memory settings, and whether a different join order or dataset partitioning is more suitable."
+    validation: "Measure temp usage and runtime before and after a join-order or memory-related change."
+    safety_risk: moderate
+    related_rules: [JOIN-005, SORT-001, PAR-004]
+    reinforcing_rules: [CARD-005, SORT-001]
+    contradictory_rules: [JOIN-001]
+    dependency_relationships: ["often results from poor row estimates or a large intermediate result set"]
+    evidence_availability_behavior: "Without temp or workarea evidence, classify as low-confidence observation."
+    oracle_version_notes: "Workarea and hash-join behavior is standard in Oracle 19c and later."
+    licensing_notes: "Base plan and runtime data with temp metrics."
+    source_reference: "Oracle SQL Tuning Guide; workarea and hash join documentation."
+
+  - id: JOIN-003
+    name: Merge join causes unnecessary sort movement
+    domain: JOIN
+    classification: [symptom]
+    problem_description: A merge join forces large sort or data movement that could be avoided or reduced.
+    why_it_matters: Merge joins are not inherently bad, but they may create expensive sorting costs when order or join cardinality does not fit.
+    required_evidence:
+      - merge join in plan
+      - sort steps
+      - row counts
+      - runtime effect
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+      - {source: V$SQL, license: base}
+    detection_conditions:
+      - merge join step present
+      - sort work is large or repeated
+      - runtime or temp behavior shows inefficiency
+    counter_evidence:
+      - sort is small and the merge join is the correct choice for ordered data
+    false_positive_risks:
+      - some merge joins are optimal with ordered data and a small sort footprint
+    confidence_logic:
+      - medium when sort cost is large and unnecessary
+      - high only when repeated execution and strong evidence show the merge strategy is a burden
+    root_cause_statement: "The merge join is introducing avoidable sort work that is larger than the functional requirement of the join."
+    recommendation: "Review whether join order, index ordering, or a different join strategy reduces sort work."
+    validation: "Compare alternative plans and measure sort cost and elapsed time."
+    safety_risk: low
+    related_rules: [JOIN-005, SORT-001, SORT-004]
+    reinforcing_rules: [SORT-001]
+    contradictory_rules: []
+    dependency_relationships: ["can be worsened by poor ordering or insufficient index alignment"]
+    evidence_availability_behavior: "If sort and plan evidence are absent, do not rate this strongly."
+    oracle_version_notes: "Oracle 19c join behavior remains consistent with standard join-costing guidance."
+    licensing_notes: "Base plan and runtime evidence only."
+    source_reference: "Oracle SQL Tuning Guide; optimizer join strategy documentation."
+
+  - id: JOIN-004
+    name: Cartesian join
+    domain: JOIN
+    classification: [root-cause-candidate]
+    problem_description: Oracle is joining row sources without a meaningful predicate, creating a combinatorial explosion of rows.
+    why_it_matters: This is one of the clearest and most severe join defects seen in SQL tuning.
+    required_evidence:
+      - join predicates
+      - plan rows
+      - row-source counts
+      - runtime metrics
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+      - {source: V$SQL, license: base}
+    detection_conditions:
+      - no join predicate or a broken predicate pattern appears in the plan
+      - row counts at join step are extremely large
+    counter_evidence:
+      - the join is intentionally cross-product by business requirement, but that is rare and should be explicitly justified
+    false_positive_risks:
+      - some queries truly need cross-product semantics, but that is usually explicit and not accidental
+    confidence_logic:
+      - high when plan clearly shows a cartesian join and row count explosion occurs
+    root_cause_statement: "The SQL is joining row sources without a valid join predicate, creating a cartesian product."
+    recommendation: "Add or correct join predicates and validate business logic before accepting the result."
+    validation: "Check row-source counts and confirm a corrected join predicate eliminates the explosion."
+    safety_risk: high
+    related_rules: [JOIN-005, AP-006, PRED-002]
+    reinforcing_rules: [CARD-005]
+    contradictory_rules: []
+    dependency_relationships: ["often follows from a missing predicate or an OR merge issue"]
+    evidence_availability_behavior: "If the plan hides the join predicate, the rule should be marked as not evaluated."
+    oracle_version_notes: "This behavior has been a clear Oracle SQL defect across versions."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; optimizer join predicate documentation."
+
+  - id: JOIN-005
+    name: Poor join order
+    domain: JOIN
+    classification: [root-cause-candidate]
+    problem_description: Oracle chooses an inefficient join sequence that causes large intermediate results and higher runtime.
+    why_it_matters: Join order determines which row set is reduced first, which is a major cost determinant.
+    required_evidence:
+      - plan row-source order
+      - join cardinality
+      - estimated vs actual rows
+      - runtime metrics
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+      - {source: V$SQL, license: base}
+    detection_conditions:
+      - join order appears to process large row sets before small filtering groups
+      - estimated row set and actual behavior show poor cost propagation
+    counter_evidence:
+      - order is intentional and supported by data shape or statistics
+    false_positive_risks:
+      - a poor order can still be acceptable on small data sets
+    confidence_logic:
+      - medium when row counts and runtime suggest an inefficient order
+      - high when the pattern is repeated across a larger workload
+    root_cause_statement: "The join order is applying a large row set too early, causing excessive intermediate work and poor cost behavior."
+    recommendation: "Review join order, filter placement, and whether a better driving table or index alignment is available."
+    validation: "Compare the candidate join order to an alternate plan using the same data and confirm runtime reduction."
+    safety_risk: moderate
+    related_rules: [JOIN-001, CARD-005, PART-003]
+    reinforcing_rules: [CARD-001, CARD-005]
+    contradictory_rules: [JOIN-003]
+    dependency_relationships: ["often comes from cardinality error or index mismatch"]
+    evidence_availability_behavior: "If the plan is incomplete, the diagnosis should remain low confidence."
+    oracle_version_notes: "Strongly relevant to Oracle 19c optimizer behavior."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; optimizer join order guidance."
+
+  - id: SORT-001
+    name: Sort spill to TEMP
+    domain: SORT
+    classification: [symptom]
+    problem_description: Sort work exceeds memory and spills to temporary storage, increasing cost and latency.
+    why_it_matters: Temporary spill can turn a fast in-memory sort into a slow physical I/O process.
+    required_evidence:
+      - sort steps in plan
+      - temp usage
+      - runtime metrics
+      - row counts
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$SQL, license: base}
+      - {source: V$TEMPSEG_USAGE, license: base}
+    detection_conditions:
+      - sort operation present
+      - memory or temp usage rises significantly
+      - runtime is unexpectedly high
+    counter_evidence:
+      - the data set is small and in-memory sort remains cheap
+    false_positive_risks:
+      - not every sort spill is a defect, but repeated spill in a hot path is significant
+    confidence_logic:
+      - medium when spill occurs consistently
+      - high when the spilled sort is a major part of runtime and ties to a recurring plan
+    root_cause_statement: "The sort path is too large for the available workarea, so Oracle must spill to temporary storage."
+    recommendation: "Review the SQL shape, row volume, and whether grouping or ordering choices are creating unnecessary sort work."
+    validation: "Measure temp usage and elapsed time before and after a rewrite or plan change."
+    safety_risk: moderate
+    related_rules: [SORT-003, SORT-004, JOIN-002]
+    reinforcing_rules: [JOIN-002, PAR-004]
+    contradictory_rules: []
+    dependency_relationships: ["often follows from bad join order or large intermediate sets"]
+    evidence_availability_behavior: "Without temp or workarea evidence, keep as low confidence."
+    oracle_version_notes: "Workarea spill is a standard Oracle 19c behavior and is heavily relevant to runtime tuning."
+    licensing_notes: "Base plan and runtime data with temp usage if available."
+    source_reference: "Oracle SQL Tuning Guide; workarea and sorting documentation."
+
+  - id: SORT-002
+    name: Hash aggregation spill
+    domain: SORT
+    classification: [symptom]
+    problem_description: Hash aggregation exceeds memory and spills to disk, making compute cost much larger than expected.
+    why_it_matters: Large aggregation spill is common when the plan is doing too much grouping or the data distribution is uneven.
+    required_evidence:
+      - hash aggregate steps
+      - memory usage
+      - temp usage
+      - row counts
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$SQL, license: base}
+      - {source: V$TEMPSEG_USAGE, license: base}
+    detection_conditions:
+      - hash aggregate is present
+      - memory or temp use is high
+      - row volume makes the aggregate costly
+    counter_evidence:
+      - aggregate is over a modest data set and remains efficient
+    false_positive_risks:
+      - not every aggregation needs a memory fix
+    confidence_logic:
+      - medium when spill is repeated and block-size behavior suggests bad workarea fit
+      - high when it dominates runtime and is consistent across repeated execution
+    root_cause_statement: "The aggregation is too large for the current workarea settings, which causes spill and slower execution."
+    recommendation: "Review the aggregation shape, grouping pattern, and whether the query can be rewritten or better partitioned."
+    validation: "Check the before/after workarea and runtime behavior after a rewrite or plan change."
+    safety_risk: moderate
+    related_rules: [SORT-001, SORT-003, PAR-004]
+    reinforcing_rules: [CARD-005, DATA-004]
+    contradictory_rules: []
+    dependency_relationships: ["often results from cardinality mismatch or large intermediate row sets"]
+    evidence_availability_behavior: "If workarea evidence is unavailable, keep as an observation rather than a firm diagnosis."
+    oracle_version_notes: "Hash aggregation spill is standard and well documented in Oracle 19c tuning materials."
+    licensing_notes: "Base evidence with temp usage if present."
+    source_reference: "Oracle SQL Tuning Guide; workarea and hash aggregate documentation."
+
+  - id: SORT-003
+    name: DISTINCT or GROUP BY overworks data
+    domain: SORT
+    classification: [symptom]
+    problem_description: GROUP BY or DISTINCT is forcing unnecessary sort and duplicate elimination over a large row set.
+    why_it_matters: This can be expensive even when the SQL is logically correct.
+    required_evidence:
+      - distinct or group-by steps
+      - row counts
+      - sort or aggregation metrics
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$SQL, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+    detection_conditions:
+      - group-by or distinct is present
+      - large intermediate rows are being reduced
+      - runtime or sort evidence shows disproportionate work
+    counter_evidence:
+      - deduplication is required by business logic and the data volume is small
+    false_positive_risks:
+      - duplicates may be required, so the work is legitimate
+    confidence_logic:
+      - medium when a large row set is reduced with expensive sort behavior
+      - high when the query is repeated and the work is clearly regular and unnecessary
+    root_cause_statement: "The statement is doing more data reduction work than necessary because the grouping or duplicate-elimination pattern is larger than required."
+    recommendation: "Review whether a different query shape, pre-aggregation, or set operation could reduce work without altering business meaning."
+    validation: "Compare runtime and sort cost before and after the SQL rewrite or plan fix."
+    safety_risk: low
+    related_rules: [SORT-001, SORT-004, SUBQ-004]
+    reinforcing_rules: [JOIN-005, CARD-005]
+    contradictory_rules: []
+    dependency_relationships: ["often follows from poor join order or from large upstream row sets"]
+    evidence_availability_behavior: "If the group by and rows evidence are missing, do not rate this strongly."
+    oracle_version_notes: "This remains standard across Oracle 19c."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; aggregation and sort behavior."
+
+  - id: SORT-004
+    name: ORDER BY or window step dominates runtime
+    domain: SORT
+    classification: [symptom]
+    problem_description: A sort or windowing step is dominating total elapsed time because the statement must fully order or partition a large data set.
+    why_it_matters: Ordering work can be very expensive when used on large sets or repeated patterns.
+    required_evidence:
+      - order-by or window steps
+      - row counts
+      - elapsed time contribution
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+      - {source: V$SQL, license: base}
+    detection_conditions:
+      - ordering or window operation is present
+      - large row counts or long runtime are attributed to that step
+    counter_evidence:
+      - row set is small and the ordering cost is normal
+    false_positive_risks:
+      - ordering can be required by business logic, so not every sort is a defect
+    confidence_logic:
+      - medium when the sort step is clearly dominating cost
+      - high when the same ordering pattern is repeated and the volume is large
+    root_cause_statement: "The query is paying a large cost for ordering or window processing that may be larger than the business need."
+    recommendation: "Review whether the ordering is needed for every row and whether a more constrained query path or better index order can help."
+    validation: "Measure the runtime contribution of the order step before and after the rewrite or index change."
+    safety_risk: low
+    related_rules: [SORT-001, SORT-003, DATA-001]
+    reinforcing_rules: [DATA-001]
+    contradictory_rules: []
+    dependency_relationships: ["may be the result of a large join before ordering"]
+    evidence_availability_behavior: "If plan steps are missing, keep as low confidence."
+    oracle_version_notes: "This remains a common pattern in 19c SQL tuning and is well documented."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; sort and analytic windowing documentation."
+
+  - id: SUBQ-001
+    name: Correlated subquery repeated per row
+    domain: SUBQ
+    classification: [root-cause-candidate]
+    problem_description: A correlated subquery is executed repeatedly for each outer row, which can drive large runtime.
+    why_it_matters: Repeated subquery execution amplifies logical work and often makes a query appear slower than it should.
+    required_evidence:
+      - plan step for correlated subquery
+      - row counts
+      - SQL text
+      - runtime metrics
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$SQL, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+    detection_conditions:
+      - subquery is correlated with outer row values
+      - same subquery repeats for many outer rows
+      - runtime is dominated by this repeated execution pattern
+    counter_evidence:
+      - number of outer rows is small and the subquery is not expensive in practice
+    false_positive_risks:
+      - some correlated subqueries are acceptable for small, controlled row sets
+    confidence_logic:
+      - medium when repeated execution is evident in the plan
+      - high when the query is repeated and runtime remains poor across executions
+    root_cause_statement: "The correlated subquery is being re-executed for each row, creating unnecessary repeated work."
+    recommendation: "Rewrite the logic using joins, EXISTS pattern checks, or a different data-shaping approach if the business logic permits it."
+    validation: "Compare runtime and row counts across the original query and the rewrite."
+    safety_risk: moderate
+    related_rules: [SUBQ-002, SUBQ-003, JOIN-001]
+    reinforcing_rules: [AP-003]
+    contradictory_rules: []
+    dependency_relationships: ["can amplify poor join order or bad access path"]
+    evidence_availability_behavior: "If the SQL text or plan is incomplete, do not claim a repeated-subquery defect."
+    oracle_version_notes: "Correlated subquery patterns are standard across Oracle 19c and later."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; subquery and execution-plan guidance."
+
+  - id: SUBQ-002
+    name: Scalar subquery repeated or poorly materialized
+    domain: SUBQ
+    classification: [root-cause-candidate]
+    problem_description: A scalar subquery is being evaluated repeatedly or without a useful materialized path.
+    why_it_matters: Scalar subqueries often become a hidden repetition point, especially in large row sets.
+    required_evidence:
+      - scalar subquery steps
+      - row counts
+      - execute frequency
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$SQL, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+    detection_conditions:
+      - scalar subquery shown as repeated row-source step
+      - large row counts or repeated execution pattern
+    counter_evidence:
+      - the subquery is small and served via a small, efficient row set
+    false_positive_risks:
+      - some scalar subqueries are correct and cheap when done for a small row set
+    confidence_logic:
+      - medium when repeated evaluation is obvious
+      - high when execution frequency and row count justify a real performance issue
+    root_cause_statement: "The scalar subquery is being re-evaluated repeatedly rather than being served by a better data shape."
+    recommendation: "Review whether a join, set-based rewrite, or pre-aggregation would be more efficient."
+    validation: "Compare a rewrite against the original query on the same data and measure runtime."
+    safety_risk: moderate
+    related_rules: [SUBQ-001, SUBQ-004, JOIN-005]
+    reinforcing_rules: [CARD-005]
+    contradictory_rules: []
+    dependency_relationships: ["may appear where cardinality estimates are poor"]
+    evidence_availability_behavior: "If the scalar subquery is hidden by plan simplification, do not overstate the diagnosis."
+    oracle_version_notes: "This remains a standard issue in Oracle SQL tuning."
+    licensing_notes: "Base plan and runtime evidence only."
+    source_reference: "Oracle SQL Tuning Guide; subquery tuning guidance."
+
+  - id: SUBQ-003
+    name: IN or EXISTS transformation is poor
+    domain: SUBQ
+    classification: [root-cause-candidate]
+    problem_description: The SQL uses an IN or EXISTS form that is producing a poor query transformation or a costly anti-join pattern.
+    why_it_matters: A subquery form that looks simple can still create a very expensive predicate evaluation path.
+    required_evidence:
+      - SQL text
+      - plan steps
+      - row counts
+      - runtime metrics
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+    detection_conditions:
+      - IN or EXISTS form is present and leads to repeated or broad lookups
+      - plan shape does not match the expected efficient path
+    counter_evidence:
+      - the alternative form is not materially different in actual runtime
+    false_positive_risks:
+      - query structure may rely on optimizer rewrite behavior that is still acceptable
+    confidence_logic:
+      - medium when a clearly worse transformation is visible
+      - high when runtime and row counts support the issue across repeated executions
+    root_cause_statement: "The chosen form of predicate check is producing a significantly poorer execution plan than a more direct rewrite would."
+    recommendation: "Review the SQL rewrite choice and compare the query with a join or EXISTS alternative."
+    validation: "Test equivalent alternatives and compare actual row counts, plan shape, and runtime."
+    safety_risk: moderate
+    related_rules: [SUBQ-001, SUBQ-004, JOIN-001]
+    reinforcing_rules: [CARD-005]
+    contradictory_rules: []
+    dependency_relationships: ["can be amplified by bad cardinality estimates or weak index alignment"]
+    evidence_availability_behavior: "If plan evidence is missing, the rule stays unproven."
+    oracle_version_notes: "Oracle 19c optimizer rewrite behavior remains important here."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; subquery and rewrite discussions."
+
+  - id: SUBQ-004
+    name: CTE or inline materialization issue
+    domain: SUBQ
+    classification: [root-cause-candidate]
+    problem_description: A CTE or inline view is materialized or reused in a way that creates avoidable work or poor row-set behavior.
+    why_it_matters: A seemingly tidy SQL structure can still become expensive if it forces repeated materialization or large intermediate results.
+    required_evidence:
+      - SQL text
+      - plan steps
+      - row counts
+      - runtime metrics
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+    detection_conditions:
+      - CTE or inline view appears in the SQL and causes materialization or repeated intermediate work
+      - runtime pattern is poor relative to the row volume
+    counter_evidence:
+      - small data set or low repetition means the materialization is acceptable
+    false_positive_risks:
+      - materialization can be the correct trade-off when the query is logically complex
+    confidence_logic:
+      - medium when the row volume is large and the plan clearly materializes expensive intermediate sets
+      - high when the repeated pattern is consistent and the runtime is dominated by the materialization step
+    root_cause_statement: "The query uses a materialized CTE or inline path that is producing an excessive intermediate row set."
+    recommendation: "Review whether the CTE could be inlined, reused, or refactored in a more set-based way."
+    validation: "Compare runtime and row counts before and after the rewrite."
+    safety_risk: moderate
+    related_rules: [SUBQ-003, SORT-003, JOIN-005]
+    reinforcing_rules: [CARD-005]
+    contradictory_rules: []
+    dependency_relationships: ["often linked to join order or large intermediate sort work"]
+    evidence_availability_behavior: "Without plan or SQL text, the diagnosis cannot be trusted."
+    oracle_version_notes: "This is a standard SQL-shape concern in Oracle 19c."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; query rewrite and CTE behavior guidance."
+
+  - id: CUR-001
+    name: Bind peeking instability
+    domain: CUR
+    classification: [root-cause-candidate]
+    problem_description: Oracle chooses different plans for different binds because bind peeking is optimizing against a particular value distribution.
+    why_it_matters: A single SQL statement may appear stable on average but behave poorly for certain bind values.
+    required_evidence:
+      - child cursors
+      - bind values
+      - plan hash values
+      - execution count
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: V$SQL_SHARED_CURSOR, license: base}
+      - {source: V$SQL_PLAN, license: base}
+    detection_conditions:
+      - multiple child cursors are active
+      - plans vary materially across bind values
+      - runtime differs by bind set or SQL pattern
+    counter_evidence:
+      - only one plan is used with a stable runtime profile
+    false_positive_risks:
+      - some bind variation is normal and not necessarily problematic
+    confidence_logic:
+      - medium when multiple plans exist and data distribution is skewed
+      - high when the runtime profile clearly reflects different plan choices
+    root_cause_statement: "The optimizer is choosing different plans based on a particular bind set, leading to unstable performance."
+    recommendation: "Review bind skew, histogram quality, and whether the plan should be stabilized or better tuned."
+    validation: "Compare plan hash values and runtime for representative bind sets."
+    safety_risk: moderate
+    related_rules: [CUR-002, CARD-002, PRED-005]
+    reinforcing_rules: [CARD-005, CARD-003]
+    contradictory_rules: []
+    dependency_relationships: ["often linked to histogram or skew problems"]
+    evidence_availability_behavior: "If child cursor data is absent, do not treat the issue as proven."
+    oracle_version_notes: "Oracle 19c includes known bind-peeking behavior and adaptive cursor sharing features."
+    licensing_notes: "Base evidence is sufficient for many cases."
+    source_reference: "Oracle SQL Tuning Guide; adaptive cursor sharing and bind peeking documentation."
+
+  - id: CUR-002
+    name: Adaptive cursor sharing issue
+    domain: CUR
+    classification: [root-cause-candidate]
+    problem_description: Adaptive cursor sharing is forced into a poor pattern because the workload uses multiple bind value groups but the optimizer is still not finding a stable plan.
+    why_it_matters: Poor adaptive behavior can create repeated plan churn and unstable execution costs.
+    required_evidence:
+      - child cursors
+      - bind sets
+      - plan hash values
+      - execution counts
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: V$SQL_SHARED_CURSOR, license: base}
+      - {source: V$SQL, license: base}
+    detection_conditions:
+      - multiple child cursors for a single SQL ID
+      - plan churn is strongly linked to bind value set
+    counter_evidence:
+      - one plan is stable and efficient, so the child-cursor churn is not serious
+    false_positive_risks:
+      - some adaptive behavior is acceptable and not a defect by itself
+    confidence_logic:
+      - medium when repeated churn is clearly tied to a value range
+      - high when runtime and plan instability are sustained over a significant workload
+    root_cause_statement: "The system is repeatedly reoptimizing across bind values rather than reaching a stable and efficient plan."
+    recommendation: "Review bind distribution, histograms, and whether a planned fix or a safer SQL shape is needed."
+    validation: "Compare plan hash stability and runtime under representative bind groups before and after refactoring."
+    safety_risk: moderate
+    related_rules: [CUR-001, CUR-003, CARD-002]
+    reinforcing_rules: [CARD-005]
+    contradictory_rules: [CUR-005]
+    dependency_relationships: ["often appears when data skew is strong or when a histogram is not helping"]
+    evidence_availability_behavior: "If bind values or child cursor counts are missing, the claim should be downgraded."
+    oracle_version_notes: "Relevant to Oracle 19c and later; standard optimizer feature around bind-aware adaptation."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; adaptive cursor sharing documentation."
+
+  - id: CUR-003
+    name: Child cursor churn
+    domain: CUR
+    classification: [symptom]
+    problem_description: A single SQL statement keeps producing many child cursors, creating overhead and plan instability.
+    why_it_matters: Churn often masks deeper issues in bind selection, plan drift, or data skew.
+    required_evidence:
+      - child cursor count
+      - parse counts
+      - SQL hash details
+      - plan versions
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: V$SQL_SHARED_CURSOR, license: base}
+      - {source: V$SQL_PLAN, license: base}
+    detection_conditions:
+      - large number of child cursors exists for the same SQL ID
+      - parse overhead or repeated plan changes are visible
+    counter_evidence:
+      - few child cursors and stable plan use
+    false_positive_risks:
+      - some statement families naturally produce a few child cursors without harm
+    confidence_logic:
+      - medium when cursor churn is obvious and sustained
+      - high when the churn correlates with poor runtime or repeated plan changes
+    root_cause_statement: "The SQL is repeatedly creating new child cursors, creating instability and higher overhead."
+    recommendation: "Review bind variability, statistics, and whether the SQL shape is forcing reoptimization."
+    validation: "Track cursor count and runtime over time to verify the churn is not just transient."
+    safety_risk: low
+    related_rules: [CUR-001, CUR-002, CUR-004]
+    reinforcing_rules: [CARD-002]
+    contradictory_rules: []
+    dependency_relationships: ["often follows from bind-peeking or skew patterns"]
+    evidence_availability_behavior: "If child cursor and parse counts are missing, treat this as unverified."
+    oracle_version_notes: "A standard Oracle 19c SQL behavior issue."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; cursor-sharing and optimizer behavior documentation."
+
+  - id: CUR-004
+    name: Plan regression after a change
+    domain: CUR
+    classification: [root-cause-candidate]
+    problem_description: The SQL plan changed after a stats refresh, code deploy, or environment change and the runtime worsened.
+    why_it_matters: Plan regression is a major source of SQL performance degradation but must be proven with evidence.
+    required_evidence:
+      - historical plans
+      - stats timing
+      - change window
+      - runtime comparison
+    oracle_sources:
+      - {source: DBA_HIST_SQL_PLAN, license: optional}
+      - {source: V$SQL_PLAN, license: base}
+      - {source: DBA_HIST_SQLSTAT, license: optional}
+    detection_conditions:
+      - plan hash changed around time of regression
+      - runtime worsened after change in stats or code
+    counter_evidence:
+      - no plan hash change or no runtime shift occurred
+    false_positive_risks:
+      - external workload changes can look like a plan regression even when they are not
+    confidence_logic:
+      - medium when a clear plan hash change aligns with a worsening time window
+      - high when historical evidence and runtime comparison support the same conclusion
+    root_cause_statement: "A recent plan change is associated with the speed regression, and the evidence supports that the plan itself is the cause."
+    recommendation: "Review the stats change, code change, or SQL plan management controls before making a corrective plan or SQL change."
+    validation: "Use a controlled comparison between the old and new plan under representative workload conditions."
+    safety_risk: moderate
+    related_rules: [CUR-005, CARD-001, CARD-005]
+    reinforcing_rules: [CARD-001, CARD-005]
+    contradictory_rules: [EXT-001]
+    dependency_relationships: ["can be caused by stats change, skew, or broader workload drift"]
+    evidence_availability_behavior: "Historical evidence is optional; without it the diagnosis should remain cautious."
+    oracle_version_notes: "Relevant to Oracle 19c; plan drift and optimizer behavior remain important in later releases."
+    licensing_notes: "AWR/ASH may be optional or licensed."
+    source_reference: "Oracle SQL Tuning Guide; SQL Plan Management and plan-change analysis guidance."
+
+  - id: CUR-005
+    name: SQL Plan Management not controlling drift
+    domain: CUR
+    classification: [symptom]
+    problem_description: SQL Plan Management or plan controls are not preventing an unstable plan from recurring.
+    why_it_matters: Without plan control, the optimizer may revert to a poor execution path after a change.
+    required_evidence:
+      - plan baseline information
+      - plan hash values
+      - change history
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: DBA_SQL_PLAN_BASELINES, license: optional}
+      - {source: DBA_HIST_SQL_PLAN, license: optional}
+    detection_conditions:
+      - a poor plan repeatedly appears despite plan-control protections
+    counter_evidence:
+      - a stable plan is the default and no drift is observed
+    false_positive_risks:
+      - not every plan drift is a management problem
+    confidence_logic:
+      - medium when plan control is clearly ineffective
+      - high when repeated runtime regression correlates with drift and no other cause is found
+    root_cause_statement: "The system is not retaining or enforcing a good plan, so the SQL is drifting back to an inferior shape."
+    recommendation: "Review SQL Plan Management and optimizer controls before changing the SQL itself."
+    validation: "Compare baseline retention and plan behavior under the same workload."
+    safety_risk: low
+    related_rules: [CUR-004, CUR-001]
+    reinforcing_rules: [CARD-001]
+    contradictory_rules: []
+    dependency_relationships: ["may interact with plan regression, bind-peeking behavior, and stale stats"]
+    evidence_availability_behavior: "If baseline data is missing, mark as not evaluated."
+    oracle_version_notes: "SQL Plan Management remains a relevant Oracle 19c feature."
+    licensing_notes: "Plan management may require support features or relevant metadata."
+    source_reference: "Oracle SQL Tuning Guide; SQL Plan Management documentation."
+
+  - id: PAR-001
+    name: CPU-bound SQL
+    domain: PAR
+    classification: [symptom, environmental-contributor]
+    problem_description: The query is consuming a large amount of CPU time and is therefore responsible for a high user-visible runtime cost.
+    why_it_matters: CPU can be a real SQL defect, but it may also indicate a broader workload issue or concurrency bottleneck.
+    required_evidence:
+      - CPU time
+      - elapsed time
+      - concurrent session data
+      - plan shape
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: V$SESSION, license: base}
+      - {source: V$ACTIVE_SESSION_HISTORY, license: optional}
+    detection_conditions:
+      - CPU time is a significant part of runtime
+      - query is active under load or concurrency pressure
+    counter_evidence:
+      - runtime is dominated by waits and not CPU
+    false_positive_risks:
+      - CPU pressure may be caused by a broader system issue, not the SQL alone
+    confidence_logic:
+      - medium when CPU dominates runtime and plan evidence matches the cost
+      - high when the runtime remains poor even under controlled conditions
+    root_cause_statement: "The SQL is consuming excessive CPU relative to the work it performs, which is moving runtime upward."
+    recommendation: "Review whether the plan is doing excessive work, whether a better index or plan is available, and whether the broader workload is also at fault."
+    validation: "Compare CPU time before and after SQL or workload changes."
+    safety_risk: moderate
+    related_rules: [PAR-002, PAR-004, EXT-001]
+    reinforcing_rules: [CARD-005, JOIN-001]
+    contradictory_rules: [EXT-001]
+    dependency_relationships: ["may be aggravated by concurrency, I/O wait, or hardware saturation"]
+    evidence_availability_behavior: "Without CPU or session evidence, this should remain an observation."
+    oracle_version_notes: "This is core Oracle performance diagnostics for 19c and later."
+    licensing_notes: "Base evidence if available; ASH may be optional."
+    source_reference: "Oracle Database Performance Tuning Guide; Oracle wait and session guides."
+
+  - id: PAR-002
+    name: I/O-bound SQL
+    domain: PAR
+    classification: [symptom]
+    problem_description: The SQL is dominated by logical or physical I/O work and is therefore waiting on I/O rather than SQL logic alone.
+    why_it_matters: A large read cost is often a real problem but may still be a symptom of missing index, bad plan, or external storage slowdown.
+    required_evidence:
+      - buffer gets
+      - physical reads
+      - I/O waits
+      - plan shape
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: V$SESSION, license: base}
+      - {source: V$ACTIVE_SESSION_HISTORY, license: optional}
+    detection_conditions:
+      - reads dominate runtime or lag patterns
+      - plan and object metadata match the read-heavy pattern
+    counter_evidence:
+      - the SQL is very fast when the object is in memory or when storage is healthy
+    false_positive_risks:
+      - storage may be the root cause rather than the SQL itself
+    confidence_logic:
+      - medium when the plan and read counts clearly show a heavy I/O pattern
+      - high only when external I/O issues and SQL issues are both considered and separated
+    root_cause_statement: "The SQL is performing a high volume of reads, which makes the statement costly even if the underlying storage or concurrency is also contributing."
+    recommendation: "Check whether a better access path, fewer reads, or a storage issue is the true driver before changing query design."
+    validation: "Compare runtime and read counts under a controlled test and confirm whether the storage or SQL path is the main contributor."
+    safety_risk: moderate
+    related_rules: [PAR-001, EXT-003, AP-001]
+    reinforcing_rules: [AP-001, AP-003]
+    contradictory_rules: [EXT-003]
+    dependency_relationships: ["storage delay can amplify an otherwise normal SQL path"]
+    evidence_availability_behavior: "If only partial I/O metrics are available, preserve uncertainty."
+    oracle_version_notes: "I/O and CPU analysis remain central in Oracle 19c and later."
+    licensing_notes: "Base data plus optional ASH."
+    source_reference: "Oracle Database Performance Tuning Guide; Oracle wait and tuning guide."
+
+  - id: PAR-003
+    name: Parallel execution skew or serial bottleneck
+    domain: PAR
+    classification: [symptom]
+    problem_description: Parallel execution creates uneven work distribution or a serial bottleneck, leading to poor scalability.
+    why_it_matters: A parallel plan can become slower than serial execution if the work is not balanced efficiently.
+    required_evidence:
+      - parallel steps
+      - PX statistics
+      - runtime skew
+      - object data distribution
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$PX_SESSION, license: base}
+      - {source: V$SQL, license: base}
+    detection_conditions:
+      - parallel execution is present
+      - one or more PX steps dominate or show skew
+      - runtime scales poorly with parallelism
+    counter_evidence:
+      - parallelism scales as expected and no skew is present
+    false_positive_risks:
+      - some parallel SQL is intentionally large and should be slow
+    confidence_logic:
+      - medium when skew is obvious but the runtime is not clearly bad
+      - high when runtime is poor and skew is sustained under load
+    root_cause_statement: "The parallel plan is not scaling well because the work is unevenly distributed or serially constrained."
+    recommendation: "Review partitioning, distribution, and parallel settings before altering the SQL or schema."
+    validation: "Test different parallel settings or partitioning patterns under controlled execution."
+    safety_risk: moderate
+    related_rules: [PAR-001, PAR-004, PART-004]
+    reinforcing_rules: [PART-001, PART-004]
+    contradictory_rules: []
+    dependency_relationships: ["often worsened by partition skew or storage bottlenecks"]
+    evidence_availability_behavior: "If PX metrics are absent, keep the result uncertain."
+    oracle_version_notes: "Parallel execution behavior is a major area in Oracle 19c and later."
+    licensing_notes: "Base plan and PX states."
+    source_reference: "Oracle SQL Tuning Guide; parallel execution documentation."
+
+  - id: PAR-004
+    name: Memory pressure and workarea spill
+    domain: PAR
+    classification: [symptom, environmental-contributor]
+    problem_description: The database is under memory pressure, which leads to workarea spill and slower execution.
+    why_it_matters: Memory pressure can make a previously acceptable SQL shape perform poorly without changing the SQL itself.
+    required_evidence:
+      - memory settings
+      - temp usage
+      - workarea spill indicators
+      - runtime metrics
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: V$TEMPSEG_USAGE, license: base}
+      - {source: V$SESSION, license: base}
+    detection_conditions:
+      - workarea memory usage is high
+      - temp spill is observed
+      - memory pressure is also visible in workload metrics
+    counter_evidence:
+      - memory is healthy and no spill is visible
+    false_positive_risks:
+      - temporary spill can be normal for a large but acceptable query
+    confidence_logic:
+      - medium when memory and spill appear abnormal
+      - high when the same SQL is repeatedly spilling under sustained load
+    root_cause_statement: "The statement is operating under constrained memory conditions, which is causing workarea spill and degraded execution."
+    recommendation: "Review memory sizing and workload concurrency before changing the SQL design."
+    validation: "Compare runtime and temp usage across a memory-change or concurrency test."
+    safety_risk: moderate
+    related_rules: [SORT-001, SORT-002, EXT-006]
+    reinforcing_rules: [SORT-001, SORT-002]
+    contradictory_rules: []
+    dependency_relationships: ["can make a normal sort or hash operation appear defective"]
+    evidence_availability_behavior: "If temp or memory metrics are unavailable, keep as low confidence."
+    oracle_version_notes: "This is relevant across Oracle 19c and later."
+    licensing_notes: "Base data only."
+    source_reference: "Oracle SQL Tuning Guide; workarea and memory guidance."
+
+  - id: PART-001
+    name: Partition pruning failure
+    domain: PART
+    classification: [root-cause-candidate]
+    problem_description: The SQL uses a partition key predicate but Oracle does not prune partitions as expected.
+    why_it_matters: This can force Oracle to read many partitions instead of a narrow subset.
+    required_evidence:
+      - partition key predicate
+      - partition metadata
+      - execution plan
+    oracle_sources:
+      - {source: DBA_TAB_PARTITIONS, license: base}
+      - {source: DBA_IND_PARTITIONS, license: base}
+      - {source: V$SQL_PLAN, license: base}
+    detection_conditions:
+      - partition key predicate present
+      - plan scans more partitions than expected
+      - runtime remains large because the scan is broad
+    counter_evidence:
+      - broad scan is deliberate because all partitions are needed
+    false_positive_risks:
+      - not all partitioned objects require pruning for every query
+    confidence_logic:
+      - medium when selective pruning should be present and is not
+      - high when the false broad scan is repeated and expensive
+    root_cause_statement: "The predicate is not being used to prune partitions, causing a broad scan where a narrow path should be possible."
+    recommendation: "Review the partition predicate alignment and whether the object design or SQL shape should be adjusted."
+    validation: "Compare partition scan steps and runtime before and after a rewrite or predicate fix."
+    safety_risk: moderate
+    related_rules: [PART-003, PART-004, AP-007]
+    reinforcing_rules: [AP-007, JOIN-005]
+    contradictory_rules: []
+    dependency_relationships: ["may coexist with poor join order or a bad predicate structure"]
+    evidence_availability_behavior: "If partition metadata is absent, the diagnosis is weak."
+    oracle_version_notes: "Partition pruning is a core Oracle 19c optimization and remains relevant in newer releases."
+    licensing_notes: "Base metadata and plan data."
+    source_reference: "Oracle SQL Tuning Guide; partitioning and pruning documentation."
+
+  - id: PART-002
+    name: Partition-local index mismatch
+    domain: PART
+    classification: [root-cause-candidate]
+    problem_description: The index and partition design do not match the actual access pattern, creating redundant or ineffective scans.
+    why_it_matters: Local and global index designs have different performance implications under partitioned workloads.
+    required_evidence:
+      - partitioned index metadata
+      - object design
+      - plan steps
+      - runtime metrics
+    oracle_sources:
+      - {source: DBA_INDEXES, license: base}
+      - {source: DBA_IND_PARTITIONS, license: base}
+      - {source: V$SQL_PLAN, license: base}
+    detection_conditions:
+      - partitioned object and index do not match expected access pattern
+      - plan shows broad or repeated access across partitions
+    counter_evidence:
+      - the current index alignment is efficient for the workload
+    false_positive_risks:
+      - some objects are intentionally scanned broadly even with partition-local indexes
+    confidence_logic:
+      - medium when design mismatch is obvious and the plan is poor
+      - high when the same pattern repeats under comparable workloads
+    root_cause_statement: "The partitioned object and index design do not align with the actual workload, so the optimizer is choosing an inefficient path."
+    recommendation: "Review the partitioning strategy and the local/global index fit before changing a production object."
+    validation: "Compare the runtime on equivalent partitions and confirm the design effect."
+    safety_risk: moderate
+    related_rules: [PART-001, PART-003, IDX-001]
+    reinforcing_rules: [PART-001]
+    contradictory_rules: []
+    dependency_relationships: ["can trigger broad partition scans and poor join order"]
+    evidence_availability_behavior: "If partition metadata is missing, keep the diagnosis low confidence."
+    oracle_version_notes: "Partition design remains a core Oracle 19c area."
+    licensing_notes: "Base metadata only."
+    source_reference: "Oracle partitioning documentation; SQL Tuning Guide."
+
+  - id: PART-003
+    name: Partition-wise join missed
+    domain: PART
+    classification: [optimization-opportunity]
+    problem_description: A partitioned join is not using a partition-wise strategy even though it could reduce the work materially.
+    why_it_matters: This is a performance opportunity that may be significant when both sides are partitioned similarly.
+    required_evidence:
+      - partition metadata
+      - join plan
+      - object distribution
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: DBA_TAB_PARTITIONS, license: base}
+      - {source: DBA_INDEXES, license: base}
+    detection_conditions:
+      - both objects are partitioned on similar keys
+      - join plan does not show a partition-wise path
+    counter_evidence:
+      - non-partitioned or distinct partitioning shapes mean no partition-wise strategy is suitable
+    false_positive_risks:
+      - some designs do not support efficient partition-wise joins
+    confidence_logic:
+      - medium when the design strongly suggests the strategy should be used
+      - high when the data shape and runtime show large, repeated opportunity
+    root_cause_statement: "The optimizer is not using the partitioned nature of the joined objects, causing more work than necessary."
+    recommendation: "Review partitioning alignment and whether the join pattern and data layout support a partition-wise strategy."
+    validation: "Compare a controlled execution with a partition-wise plan and measure the effect on runtime and row volume."
+    safety_risk: low
+    related_rules: [PART-001, JOIN-005, CARD-005]
+    reinforcing_rules: [PART-001]
+    contradictory_rules: []
+    dependency_relationships: ["often linked to join order and partition pruning"]
+    evidence_availability_behavior: "This route remains a low-confidence opportunity without partition metadata."
+    oracle_version_notes: "Oracle 19c supports strong partition-wise optimization."
+    licensing_notes: "Base metadata only."
+    source_reference: "Oracle partitioning guide; SQL Tuning Guide."
+
+  - id: PART-004
+    name: Broad partition scan from weak predicate
+    domain: PART
+    classification: [symptom]
+    problem_description: A broad partition scan is caused by a weak or poorly aligned predicate rather than an actual partitioning defect.
+    why_it_matters: The issue may be in the SQL predicate, not in the partitioning itself.
+    required_evidence:
+      - predicate pattern
+      - partition key usage
+      - plan
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: DBA_TAB_PARTITIONS, license: base}
+      - {source: V$SQL, license: base}
+    detection_conditions:
+      - plan reads many partitions
+      - predicate is weak or poorly aligned
+    counter_evidence:
+      - the business requirement intentionally reads most partitions
+    false_positive_risks:
+      - some workloads genuinely need to read a wide object
+    confidence_logic:
+      - medium when the predicate is clearly too broad
+      - high only when the same pattern repeats and the business logic allows a narrower query
+    root_cause_statement: "The SQL is using a broad predicate, which causes the optimizer to scan many partitions rather than a narrow subset."
+    recommendation: "Review the filter expression and whether the query can be narrowed before changing partition design."
+    validation: "Validate a tighter predicate under the same workload and compare runtime."
+    safety_risk: low
+    related_rules: [PART-001, PRED-002, PRED-004]
+    reinforcing_rules: [PRED-002]
+    contradictory_rules: []
+    dependency_relationships: ["can be hidden behind a broad partitioned range or a bad predicate shape"]
+    evidence_availability_behavior: "If the predicate and plan are incomplete, leave this unproven."
+    oracle_version_notes: "This remains a standard Oracle 19c partition-performance issue."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle partitioning and SQL tuning guides."
+
+  - id: IDX-001
+    name: Bad leading column order
+    domain: IDX
+    classification: [root-cause-candidate]
+    problem_description: The leading column of the composite index does not match the filtering or join pattern used by the query.
+    why_it_matters: The index may still exist but still not be useful because the first column is wrong for the access pattern.
+    required_evidence:
+      - index column order
+      - predicate columns
+      - execution plan
+    oracle_sources:
+      - {source: DBA_INDEXES, license: base}
+      - {source: DBA_IND_COLUMNS, license: base}
+      - {source: V$SQL_PLAN, license: base}
+    detection_conditions:
+      - leading column mismatch is clear from the predicate pattern
+      - the plan shows a weak or unusable path
+    counter_evidence:
+      - a different index is already fit for the workload and the current one is intentionally not used
+    false_positive_risks:
+      - not every index must match every predicate pattern
+    confidence_logic:
+      - medium when the mismatch is obvious and repeated
+      - high when a better index design is strongly supported and the current runtime is large
+    root_cause_statement: "The index structure does not align with the predicate sequence, so Oracle cannot efficiently use it for the workload."
+    recommendation: "Review the leading column and the access pattern before changing the schema."
+    validation: "Compare the current path with a candidate index design under the same workloads."
+    safety_risk: moderate
+    related_rules: [IDX-003, AP-006, PRED-002]
+    reinforcing_rules: [AP-003, AP-006]
+    contradictory_rules: [IDX-002]
+    dependency_relationships: ["may be hidden behind a function or conversion issue"]
+    evidence_availability_behavior: "If index metadata or predicate columns are unavailable, keep this as low confidence."
+    oracle_version_notes: "This is a fundamental Oracle index-design concept applicable in 19c and later."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; index design recommendations."
+
+  - id: IDX-002
+    name: Redundant or weak index
+    domain: IDX
+    classification: [optimization-opportunity]
+    problem_description: An index exists but contributes little value and adds write and maintenance cost.
+    why_it_matters: Low-value indexes can be expensive to maintain without helping the workload.
+    required_evidence:
+      - index definition
+      - usage pattern
+      - DML or runtime cost
+    oracle_sources:
+      - {source: DBA_INDEXES, license: base}
+      - {source: DBA_IND_STATISTICS, license: base}
+      - {source: V$SQL, license: base}
+    detection_conditions:
+      - index is rarely used or not used for known workload patterns
+      - maintenance cost or write overhead is disproportionate
+    counter_evidence:
+      - the index is needed for integrity, uniqueness, or critical access paths
+    false_positive_risks:
+      - indexes can be used during occasional but important operations
+    confidence_logic:
+      - medium when the index is clearly unused for the measured workload
+      - high when its cost is clearly not justified by a real need
+    root_cause_statement: "The index is not offering enough benefit to justify its cost and may be adding maintenance overhead without value."
+    recommendation: "Confirm actual usage and business need before removing or redesigning the index."
+    validation: "Review index usage and runtime after any index removal or redesign."
+    safety_risk: moderate
+    related_rules: [IDX-001, IDX-003, AP-003]
+    reinforcing_rules: [AP-003]
+    contradictory_rules: [IDX-001]
+    dependency_relationships: ["can coexist with query patterns that still require some supporting access path"]
+    evidence_availability_behavior: "Without usage data, this should be treated as a planning hypothesis only."
+    oracle_version_notes: "This is a common Oracle 19c design review area."
+    licensing_notes: "Base data only."
+    source_reference: "Oracle SQL Tuning Guide; index maintenance and design guidance."
+
+  - id: IDX-003
+    name: Missing covering index
+    domain: IDX
+    classification: [optimization-opportunity]
+    problem_description: A workload repeatedly accesses the same columns but the index structure is not covering enough of the required column set.
+    why_it_matters: Missing covering indexes can force extra table reads even when the predicate is selective.
+    required_evidence:
+      - selected columns
+      - access path
+      - index key set
+      - row counts
+    oracle_sources:
+      - {source: V$SQL_PLAN, license: base}
+      - {source: DBA_INDEXES, license: base}
+      - {source: DBA_IND_COLUMNS, license: base}
+    detection_conditions:
+      - the plan repeatedly reads table blocks for columns that are already part of an index candidate
+      - the same projected columns are used often
+    counter_evidence:
+      - table is small or the data pattern does not require a covering path
+    false_positive_risks:
+      - covering index may be a large maintenance burden if the workload is not frequent enough
+    confidence_logic:
+      - medium when the projected column pattern is obvious
+      - high when the same query shape is repeated at high cost
+    root_cause_statement: "The query is repeatedly reading table blocks even though the selected columns could be satisfied more efficiently by an index."
+    recommendation: "Review whether a covering candidate or a different index design could satisfy the query without extra table reads."
+    validation: "Compare runtime and block reads before and after the candidate index is evaluated."
+    safety_risk: moderate
+    related_rules: [IDX-001, AP-003, SORT-003]
+    reinforcing_rules: [AP-003]
+    contradictory_rules: []
+    dependency_relationships: ["often corresponds to a plan that reads too much data after selective index access"]
+    evidence_availability_behavior: "If the selected columns and plan are missing, keep it as a possible opportunity only."
+    oracle_version_notes: "This remains an important Oracle index-design topic."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; index design and access-path guidance."
+
+  - id: IDX-004
+    name: Unusable or poorly maintained index state
+    domain: IDX
+    classification: [root-cause-candidate]
+    problem_description: An index exists but is unusable, stale in important ways, or bloated enough to harm performance.
+    why_it_matters: Poor index health can create huge effort without a visible external issue.
+    required_evidence:
+      - index status
+      - index statistics
+      - maintenance history
+      - plan behavior
+    oracle_sources:
+      - {source: DBA_INDEXES, license: base}
+      - {source: DBA_IND_STATISTICS, license: base}
+      - {source: V$SQL_PLAN, license: base}
+    detection_conditions:
+      - index is not usable or is clearly unhealthy under workload and cost metrics
+    counter_evidence:
+      - index is healthy and performs as expected
+    false_positive_risks:
+      - some object states may be acceptable for low-use segments
+    confidence_logic:
+      - medium when maintenance or health evidence is clear
+      - high when the workload reflects the unhealthy plan path
+    root_cause_statement: "The object health or index metadata indicates an unhealthy or under-maintained index, which is directly affecting the plan."
+    recommendation: "Review index health and maintenance state before deciding on a schema change."
+    validation: "Check storage and usage behavior before and after rebuild or repair."
+    safety_risk: moderate
+    related_rules: [IDX-001, IDX-002, AP-003]
+    reinforcing_rules: [AP-003]
+    contradictory_rules: []
+    dependency_relationships: ["may be hidden behind a broader plan problem, but is still important"]
+    evidence_availability_behavior: "If index metadata is missing, no strong conclusion should be made."
+    oracle_version_notes: "This is a standard Oracle index-health area for 19c and later."
+    licensing_notes: "Base data only."
+    source_reference: "Oracle SQL Tuning Guide; index maintenance and health guidance."
+
+  - id: PRED-001
+    name: Leading wildcard LIKE prevents index use
+    domain: PRED
+    classification: [root-cause-candidate]
+    problem_description: A leading wildcard in the predicate defeats the index for a left-anchored search pattern.
+    why_it_matters: Relative row matching or text search patterns can require broad scanning if the leading character is not constrained.
+    required_evidence:
+      - predicate text
+      - plan access path
+      - index definition
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: V$SQL_PLAN, license: base}
+      - {source: DBA_INDEXES, license: base}
+    detection_conditions:
+      - LIKE '%value%' or a similar leading-wildcard predicate appears
+      - plan shows an intended full scan or broad access
+    counter_evidence:
+      - the object is small or the predicate range is broad by design
+    false_positive_risks:
+      - some queries purposely need a broad search under a small data set
+    confidence_logic:
+      - medium when the wildcard form is obvious and the plan is broad
+      - high when runtime is consistently poor and the object is not small
+    root_cause_statement: "The predicate pattern prevents a tree-based index match and forces the optimizer toward a wider read."
+    recommendation: "Review the query logic or consider a different pattern or a more constrained search form where appropriate."
+    validation: "Compare the old pattern with a safer search form on representative data."
+    safety_risk: low
+    related_rules: [PRED-003, AP-004, AP-005]
+    reinforcing_rules: [AP-003]
+    contradictory_rules: []
+    dependency_relationships: ["often interacts with text-style predicates or full-table scans"]
+    evidence_availability_behavior: "If SQL text is missing, do not evaluate this rule."
+    oracle_version_notes: "This is consistent with Oracle 19c execution-plan and predicate guidance."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; predicate and sargability concepts."
+
+  - id: PRED-002
+    name: OR predicate suppresses efficient access
+    domain: PRED
+    classification: [root-cause-candidate]
+    problem_description: An OR predicate causes a poor access path or multiple branch logic that is more expensive than a better data-shaping alternative.
+    why_it_matters: OR conditions often frustrate both index usage and cost estimation.
+    required_evidence:
+      - OR clause
+      - predicate columns
+      - plan output
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: V$SQL_PLAN, license: base}
+      - {source: DBA_INDEXES, license: base}
+    detection_conditions:
+      - OR condition exists across columns or ranges
+      - plan is broad or non-selective despite the logic
+    counter_evidence:
+      - the OR condition is small and efficient on a tiny object
+    false_positive_risks:
+      - sometimes the business logic is correct and the plan is acceptable
+    confidence_logic:
+      - medium when OR logic is clearly broad and the plan reflects it
+      - high when the pattern is repeated and runtime remains poor
+    root_cause_statement: "The OR condition is forcing a less selective access path and reducing the optimizer's ability to find a better plan."
+    recommendation: "Review whether the logic can be converted into UNION ALL or a more selective structure."
+    validation: "Compare the original OR query against a rewritten equivalent using the same workload."
+    safety_risk: moderate
+    related_rules: [PRED-001, PRED-004, JOIN-004]
+    reinforcing_rules: [AP-003]
+    contradictory_rules: []
+    dependency_relationships: ["may trigger broad scans or bad join plans"]
+    evidence_availability_behavior: "If the actual predicate text is missing, do not evaluate strongly."
+    oracle_version_notes: "Classic Oracle predicate-sargability issue."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; predicate rewriting and optimizer decisions."
+
+  - id: PRED-003
+    name: Function traps on indexed column
+    domain: PRED
+    classification: [root-cause-candidate]
+    problem_description: A function or complex expression on the indexed column prevents efficient index usage.
+    why_it_matters: The SQL is not necessarily wrong, but the function prevents Oracle from matching the predicate to the index.
+    required_evidence:
+      - predicate expression
+      - index key column
+      - plan output
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: V$SQL_PLAN, license: base}
+      - {source: DBA_INDEXES, license: base}
+    detection_conditions:
+      - function call or transformation sits on an indexed column in the predicate
+      - plan chooses a broad access method
+    counter_evidence:
+      - small table or broad scan is still sensible
+    false_positive_risks:
+      - not every function is a problem if the table is small and the scan is acceptable
+    confidence_logic:
+      - medium when the function is on the column and row counts are large
+      - high when repeated runtime evidence supports the problem
+    root_cause_statement: "The predicate expression defeats the optimizer's ability to use the relevant index."
+    recommendation: "Check for function-based index options or a more index-friendly predicate rewrite."
+    validation: "Compare the original function-based predicate to an alternative access pattern."
+    safety_risk: moderate
+    related_rules: [AP-004, PRED-004, AP-003]
+    reinforcing_rules: [AP-004]
+    contradictory_rules: []
+    dependency_relationships: ["often overlaps with implicit conversion and the access-path issue"]
+    evidence_availability_behavior: "If the actual predicate text is missing, mark as insufficient evidence."
+    oracle_version_notes: "This remains a standard Oracle 19c predicate issue."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; predicate and index interaction guidance."
+
+  - id: PRED-004
+    name: Implicit datatype conversion in predicate
+    domain: PRED
+    classification: [root-cause-candidate]
+    problem_description: The predicate compares different datatypes, forcing conversion to a non-index-friendly form.
+    why_it_matters: This is a common reason why a valid-looking query performs as though the index is absent.
+    required_evidence:
+      - column datatypes
+      - bind or literal datatypes
+      - execution plan
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: DBA_TAB_COL_STATISTICS, license: base}
+      - {source: V$SQL_PLAN, license: base}
+    detection_conditions:
+      - column and predicate types differ
+      - plan shows a broader access operation than expected
+    counter_evidence:
+      - the predicate is narrow and the object is small
+    false_positive_risks:
+      - conversion may be harmless for a very small table or simple query
+    confidence_logic:
+      - medium when a clear type mismatch is visible and the plan is poor
+      - high when repeated execution demonstrates the issue across representative values
+    root_cause_statement: "The optimizer is coercing the predicate to a different datatype, so the index cannot be used efficiently."
+    recommendation: "Align the data types of the bind or literal with the column datatype."
+    validation: "Test the same query with typed binds or matching literals and compare the plan."
+    safety_risk: moderate
+    related_rules: [AP-005, PRED-005, AP-003]
+    reinforcing_rules: [AP-005]
+    contradictory_rules: []
+    dependency_relationships: ["can be a direct cause of access-path mismatch"]
+    evidence_availability_behavior: "If datatype metadata is unavailable, leave it unresolved instead of assuming a defect."
+    oracle_version_notes: "Very relevant to Oracle 19c and later because optimizer matching still depends on consistent types."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; optimizer predicate evaluation documentation."
+
+  - id: PRED-005
+    name: Bind-type mismatch across executions
+    domain: PRED
+    classification: [root-cause-candidate]
+    problem_description: Different bind values or bind types cause the SQL to behave inconsistently across executions.
+    why_it_matters: This is one of the main drivers of plan instability and poor tuning quality.
+    required_evidence:
+      - bind values
+      - child cursor plan values
+      - execution history
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: V$SQL_SHARED_CURSOR, license: base}
+      - {source: V$SQL_PLAN, license: base}
+    detection_conditions:
+      - plans change materially across bind sets
+      - runtime is inconsistent across bound values
+    counter_evidence:
+      - one stable plan is used for all values and performance is acceptable
+    false_positive_risks:
+      - some plan differences are expected under real data skew
+    confidence_logic:
+      - medium when bind set variation is clear
+      - high when the same SQL continues to show unstable performance and plan changes under real workloads
+    root_cause_statement: "The bind behavior is creating different plan fits across executions, which yields unstable performance."
+    recommendation: "Review bind value patterns, histogram quality, and whether a more stable SQL plan or better statistics are needed."
+    validation: "Compare representative bind values across their plan hashes and runtime."
+    safety_risk: moderate
+    related_rules: [CUR-001, CUR-002, PRED-004]
+    reinforcing_rules: [CUR-001]
+    contradictory_rules: []
+    dependency_relationships: ["often linked to adaptive cursor sharing and histogram mismatch"]
+    evidence_availability_behavior: "If bind values are not captured, this remains unresolved."
+    oracle_version_notes: "This remains a standard Oracle 19c tuning issue."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; bind peeking and adaptive cursor sharing documentation."
+
+  - id: DATA-001
+    name: Pagination pattern causes repeated expensive work
+    domain: DATA
+    classification: [symptom]
+    problem_description: A pagination or offset pattern repeatedly redoes expensive work to retrieve a small window of rows.
+    why_it_matters: The query may be logically valid but expensive because of repeated scanning or sorting.
+    required_evidence:
+      - query pattern
+      - execution plan
+      - row counts
+      - runtime metrics
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+    detection_conditions:
+      - offset or page retrieval pattern is present
+      - repeated work or large sort is visible in the plan
+    counter_evidence:
+      - the working set is small and the offset pattern is cheap
+    false_positive_risks:
+      - some pagination is expected and not inherently wrong
+    confidence_logic:
+      - medium when pagination is clearly repeated and small-window queries remain costly
+      - high when repeated queries show a large incremental cost
+    root_cause_statement: "The pagination pattern is causing repeated work rather than a narrow and efficient row selection."
+    recommendation: "Review whether a cursor key, filter, or more efficient page strategy is appropriate."
+    validation: "Compare the page-query pattern under representative load and measure runtime."
+    safety_risk: low
+    related_rules: [DATA-002, SORT-004, SUBQ-004]
+    reinforcing_rules: [SORT-004]
+    contradictory_rules: []
+    dependency_relationships: ["often shows up with large sort work or repeated execution patterns"]
+    evidence_availability_behavior: "If the query text is incomplete, do not treat it as a firm issue."
+    oracle_version_notes: "This remains a common SQL design pattern across Oracle 19c and later."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; query-shape tuning and row-limiting patterns."
+
+  - id: DATA-002
+    name: Top-N query repeated unnecessarily
+    domain: DATA
+    classification: [symptom]
+    problem_description: A Top-N query is repeatedly executed and contributes a high amount of repeated work.
+    why_it_matters: Repeating the same expensive top-N logic may consume time that a cache or better query design could avoid.
+    required_evidence:
+      - execution frequency
+      - query pattern
+      - runtime metrics
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: V$SQL_PLAN, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+    detection_conditions:
+      - same top-N pattern executed many times with similar runtime profile
+    counter_evidence:
+      - repeated execution is expected and not expensive
+    false_positive_risks:
+      - some top-N queries are genuinely required and legitimately repeated
+    confidence_logic:
+      - medium when repeated execution is obvious and the work is large
+      - high when runtime remains poor under a hot path with stable data pattern
+    root_cause_statement: "The repeated top-N query is creating avoidable workload cost because it repeats the same expensive logic."
+    recommendation: "Review whether a better caching or a more selective query pattern is possible."
+    validation: "Measure runtime and row count before and after the candidate improvement."
+    safety_risk: low
+    related_rules: [DATA-001, DATA-003, SUBQ-002]
+    reinforcing_rules: [CARD-005]
+    contradictory_rules: []
+    dependency_relationships: ["can be linked to data skew or a poor sort path"]
+    evidence_availability_behavior: "If execution counts are unavailable, leave as low confidence."
+    oracle_version_notes: "Standard SQL-shape tuning issue in Oracle 19c."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; top-N and row-limiting discussions."
+
+  - id: DATA-003
+    name: Large result set returned unnecessarily
+    domain: DATA
+    classification: [symptom]
+    problem_description: The query returns a large result set when a smaller set or a more constrained path would have sufficed.
+    why_it_matters: Returning more data than needed can dominate memory and I/O cost.
+    required_evidence:
+      - rows processed
+      - result size
+      - query shape
+    oracle_sources:
+      - {source: V$SQL, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+      - {source: V$SQL_PLAN, license: base}
+    detection_conditions:
+      - the query reads or returns a large set that is disproportionate to the final action
+    counter_evidence:
+      - the query intentionally returns a broad result set by business requirement
+    false_positive_risks:
+      - some large reports are legitimate and not defective
+    confidence_logic:
+      - medium when the result set seems broader than the business need
+      - high only when runtime shows the broad return is dominating cost and a smaller result set is feasible
+    root_cause_statement: "The SQL is returning more data than is necessary for the workload, expanding the cost of the operation."
+    recommendation: "Review whether a narrower result set, aggregation, or narrower predicate is feasible."
+    validation: "Measure runtime and row output before and after a tighter result-set design."
+    safety_risk: low
+    related_rules: [DATA-001, DATA-002, SORT-003]
+    reinforcing_rules: [SORT-003]
+    contradictory_rules: []
+    dependency_relationships: ["often overlaps with poor join order or repeated query logic"]
+    evidence_availability_behavior: "If result size is absent, do not claim this strongly."
+    oracle_version_notes: "This is a common reporting and query-shape issue in Oracle 19c."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; result-set and query-shape tuning."
+
+  - id: DATA-004
+    name: Data skew biases the plan
+    domain: DATA
+    classification: [symptom, root-cause-candidate]
+    problem_description: A subset of values dominates a column and is causing a plan to underperform under real workload conditions.
+    why_it_matters: This is a common runtime problem in skewed data sets and can be mistaken for a bad optimizer plan.
+    required_evidence:
+      - histogram or distribution
+      - value frequency
+      - runtime metrics
+    oracle_sources:
+      - {source: DBA_HISTOGRAMS, license: base}
+      - {source: DBA_TAB_COL_STATISTICS, license: base}
+      - {source: V$SQL_PLAN_STATISTICS_ALL, license: base}
+    detection_conditions:
+      - a small set of values dominates the workload
+      - the plan degrades for those values while remaining acceptable elsewhere
+    counter_evidence:
+      - data is not significantly skewed and the runtime is stable
+    false_positive_risks:
+      - some skew is routine and not harmful if the plan remains efficient
+    confidence_logic:
+      - medium when skew is visible and aligned with poor runtime
+      - high when repeated executions show a strong value-specific cost issue
+    root_cause_statement: "The SQL sees a strongly skewed workload, and the plan is not fitting the dominant value pattern well."
+    recommendation: "Review histograms, extended statistics, and the skewed values before changing object design or SQL structure."
+    validation: "Measure runtime under dominant and non-dominant values before and after the stats change."
+    safety_risk: low
+    related_rules: [CARD-002, CARD-003, CUR-001]
+    reinforcing_rules: [CARD-003]
+    contradictory_rules: []
+    dependency_relationships: ["closely mirrors cardinality and bind-peeking issues"]
+    evidence_availability_behavior: "If no distribution evidence exists, keep the diagnosis conservative."
+    oracle_version_notes: "This is a standard Oracle 19c optimizer discussion area."
+    licensing_notes: "Base evidence only."
+    source_reference: "Oracle SQL Tuning Guide; histograms and skew documentation."
+
+  - id: EXT-001
+    name: Competing SQL creates contention
+    domain: EXT
+    classification: [environmental-contributor]
+    problem_description: Other SQL is consuming the same CPU, I/O, or memory resources and making the SQL look worse than it is on its own.
+    why_it_matters: The problem may be a shared-resource issue, not a SQL defect.
+    required_evidence:
+      - concurrent session evidence
+      - CPU or I/O waits
+      - ASH or session trap data if available
+    oracle_sources:
+      - {source: V$SESSION, license: base}
+      - {source: V$SESSION_EVENT, license: base}
+      - {source: V$ACTIVE_SESSION_HISTORY, license: optional}
+    detection_conditions:
+      - other sessions with similar resource use overlap in time
+      - the target SQL is impacted by waits or contention patterns
+    counter_evidence:
+      - no competing workload exists and the SQL still remains costly on its own
+    false_positive_risks:
+      - any workload can contribute to contention, but it does not always explain the root cause
+    confidence_logic:
+      - medium when comparable concurrency is visible in the same time window
+      - high when the target SQL and the competing workload are clearly correlated in timing and resource use
+    root_cause_statement: "The SQL is suffering from broader workload contention rather than being uniquely defective in isolation."
+    recommendation: "Review concurrency, workload windows, and resource-sharing patterns before changing the SQL design."
+    validation: "Compare the same SQL in a quieter window and measure whether the delay falls away."
+    safety_risk: moderate
+    related_rules: [PAR-001, PAR-002, EXT-003]
+    reinforcing_rules: [PAR-001]
+    contradictory_rules: [PAR-001]
+    dependency_relationships: ["can hide real plan defects or amplify them"]
+    evidence_availability_behavior: "Without concurrency evidence, keep as unresolved rather than blaming SQL alone."
+    oracle_version_notes: "Core Oracle performance analysis and workload diagnosis."
+    licensing_notes: "Base data plus optional ASH."
+    source_reference: "Oracle Database Performance Tuning Guide; wait and concurrency documentation."
+
+  - id: EXT-002
+    name: RMAN or backup load causes slow I/O
+    domain: EXT
+    classification: [environmental-contributor]
+    problem_description: Backup or RMAN activity is creating high I/O contention and slowing the SQL path.
+    why_it_matters: Database I/O may be dominated by backup work rather than SQL logic.
+    required_evidence:
+      - backup windows
+      - I/O waits
+      - runtime correlation
+    oracle_sources:
+      - {source: V$SESSION, license: base}
+      - {source: V$SESSION_EVENT, license: base}
+      - {source: V$ACTIVE_SESSION_HISTORY, license: optional}
+    detection_conditions:
+      - backup or RMAN sessions overlap the SQL's execution window
+      - I/O or storage waits rise at the same time
+    counter_evidence:
+      - no overlap with backup windows or no I/O pattern exists
+    false_positive_risks:
+      - storage issues can mirror backup pressure but are not always the same cause
+    confidence_logic:
+      - medium when overlap is clear
+      - high when runtime degradation aligns with backup activity and resource waits
+    root_cause_statement: "Backup activity is increasing storage pressure and delaying the SQL path."
+    recommendation: "Review backup windows and data protection schedules in parallel with SQL tuning."
+    validation: "Compare runtime with and without the overlapping backup workload."
+    safety_risk: low
+    related_rules: [EXT-003, PAR-002, EXT-001]
+    reinforcing_rules: [PAR-002]
+    contradictory_rules: []
+    dependency_relationships: ["often looks like an I/O-bound SQL issue but is caused by external backup work"]
+    evidence_availability_behavior: "If backup timing is unavailable, the issue is not strong enough to claim a root cause."
+    oracle_version_notes: "This is a standard Oracle operational issue in 19c and later."
+    licensing_notes: "Base data plus optional ASH."
+    source_reference: "Oracle RMAN documentation; Oracle Database Performance Tuning Guide."
+
+  - id: EXT-003
+    name: Storage or ASM latency dominates runtime
+    domain: EXT
+    classification: [environmental-contributor]
+    problem_description: Storage or ASM latency is the main cause of the poor runtime, not the SQL plan itself.
+    why_it_matters: Storage problems may make otherwise healthy SQL look broken.
+    required_evidence:
+      - physical reads
+      - storage or ASM metrics
+      - wait events
+    oracle_sources:
+      - {source: V$SESSION_EVENT, license: base}
+      - {source: V$ACTIVE_SESSION_HISTORY, license: optional}
+      - {source: V$SQL, license: base}
+    detection_conditions:
+      - runtime is dominated by storage-related waits or physical I/O
+      - the SQL plan appears reasonable but storage responds poorly
+    counter_evidence:
+      - the SQL itself has a clear, repeated structural defect
+    false_positive_risks:
+      - storage issues can still hide the true SQL-level issue
+    confidence_logic:
+      - medium when storage waits are strong and the plan is otherwise reasonable
+      - high when a broader storage investigation confirms the issue and the SQL is not obviously wrong
+    root_cause_statement: "The SQL is not the primary problem; the storage layer is forcing poor runtime behavior."
+    recommendation: "Review storage health, ASM performance, and physical path behavior before rewriting the SQL."
+    validation: "Compare runtime under a healthy storage window with the degraded one."
+    safety_risk: moderate
+    related_rules: [EXT-002, PAR-002, EXT-001]
+    reinforcing_rules: [PAR-002]
+    contradictory_rules: [AP-001]
+    dependency_relationships: ["can make a valid plan look bad if the storage path is slow or backed up"]
+    evidence_availability_behavior: "Without storage or wait evidence, do not assert that storage is the true issue."
+    oracle_version_notes: "This remains a standard Oracle operational perspective across Oracle versions."
+    licensing_notes: "Optional storage telemetry and ASH may be required for stronger evidence."
+    source_reference: "Oracle Database Performance Tuning Guide; storage and I/O tuning guidance."
+
+  - id: EXT-004
+    name: RAC interconnect or cache issue
+    domain: EXT
+    classification: [environmental-contributor]
+    problem_description: RAC-level interconnect or cache behavior is affecting the SQL, even if the SQL shape is not obviously broken.
+    why_it_matters: Shared cluster issues can be mistaken for SQL tuning problems.
+    required_evidence:
+      - RAC or interconnect metrics
+      - wait events
+      - node and instance context
+    oracle_sources:
+      - {source: V$SESSION, license: base}
+      - {source: V$SESSION_EVENT, license: base}
+      - {source: V$ACTIVE_SESSION_HISTORY, license: optional}
+    detection_conditions:
+      - waits or latency show a cluster-level effect
+      - SQL behavior is broad across nodes or instances
+    counter_evidence:
+      - a single-node or single-instance SQL analysis shows a local SQL defect instead
+    false_positive_risks:
+      - a bad plan can still be present alongside RAC issues
+    confidence_logic:
+      - medium when interconnect or cache waits align with the performance problem
+      - high when the issue is cluster-wide and documented as a RAC condition rather than a single query defect
+    root_cause_statement: "The cluster layer is contributing a significant share of the runtime cost, so the SQL effect is not purely local."
+    recommendation: "Review RAC health, interconnect, and instance behavior before altering SQL design."
+    validation: "Compare node-local and cluster-wide behavior under the same workload conditions."
+    safety_risk: moderate
+    related_rules: [EXT-001, PAR-001, JOIN-005]
+    reinforcing_rules: [PAR-001]
+    contradictory_rules: []
+    dependency_relationships: ["can make a normally good SQL plan look unstable under distributed workload conditions"]
+    evidence_availability_behavior: "Without cluster telemetry, this should be left as external suspicion, not a proven cause."
+    oracle_version_notes: "This is a core Oracle RAC and performance problem area."
+    licensing_notes: "May require cluster-specific telemetry beyond base database views."
+    source_reference: "Oracle RAC and Database Performance Tuning guidance; Oracle Database 19c RAC documentation."
+
+  - id: EXT-005
+    name: Blocking or lock chain is the main trigger
+    domain: EXT
+    classification: [environmental-contributor]
+    problem_description: A blocking session or lock chain is the real reason the query is slow, not a SQL design issue.
+    why_it_matters: The SQL may be waiting in a lock path rather than doing expensive work itself.
+    required_evidence:
+      - blocking sessions
+      - wait events
+      - session chain
+    oracle_sources:
+      - {source: V$SESSION, license: base}
+      - {source: V$SESSION_EVENT, license: base}
+      - {source: V$ACTIVE_SESSION_HISTORY, license: optional}
+    detection_conditions:
+      - SQL is waiting on locks or blocking chains
+      - blocking transaction is a stronger explanation than the SQL plan itself
+    counter_evidence:
+      - the plan is also poor and contributes materially to runtime
+    false_positive_risks:
+      - blocking can coexist with a genuine SQL issue
+    confidence_logic:
+      - medium when session blocking is clearly the dominant delay
+      - high when the wait chain and runtime profile line up strongly
+    root_cause_statement: "The SQL is not the primary issue; its delay is driven by a blocking session or lock chain."
+    recommendation: "Review blocking sessions, transaction scope, and concurrency paths before changing the SQL."
+    validation: "Compare runtime with and without the blocking chain and confirm the delay pattern."
+    safety_risk: high
+    related_rules: [EXT-001, PAR-001, CUR-004]
+    reinforcing_rules: [PAR-001]
+    contradictory_rules: []
+    dependency_relationships: ["can be triggered by application logic or inefficient transaction scope"]
+    evidence_availability_behavior: "If blocking evidence is absent, do not claim a lock-driven cause."
+    oracle_version_notes: "This is a standard Oracle locking and wait analysis area."
+    licensing_notes: "Base evidence plus wait and session data."
+    source_reference: "Oracle Database Performance Tuning Guide; lock and wait analysis documentation."
+
+summary:
+  total_domains: 12
+  total_rules: 54
+  original_rule_count: 42
+  v2_added_rules: 12
+  note: "This file is the canonical knowledge specification and should stay aligned with the markdown docs."

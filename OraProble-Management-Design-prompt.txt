@@ -1,0 +1,26 @@
+Use case: infographic-diagram. Create a polished single-page landscape management architecture infographic, high resolution, clear readable typography, white background, navy headings, teal main engine, restrained amber demo highlights, generous whitespace. This is a proposed architecture, not a delivered product. Title exactly "OraProble". Subtitle "Oracle & Infrastructure Incident Investigator". Small top-right badge "PROPOSED DESIGN". Strong principle below title "Deterministic first. LLM last."
+Main central flow, five connected boxes left to right, with concise exact text:
+1 "Investigation request" / "DB name • SQL ID • Incident window" / "Optional symptoms"
+2 "Resolve context" / "Local Excel inventory" / "Primary • Standby • RAC hosts"
+3 largest emphasized box "Deterministic engine" / "Collect → Analyze → Test hypotheses" / "Correlate evidence → Rank causes"
+4 "Evidence-backed findings" / "Cause • Impact • Confidence" / "Unknowns • Next tests"
+5 "DBA report" / "HTML RCA" / "Recommended actions"
+Beneath engine connected panel titled "Diagnostic modules — phased delivery". Show 12 readable compact tiles arranged 4 columns x 3 rows, Query Tuner emphasized amber and tagged "DEMO"; remaining tiles muted outlined and clearly roadmap:
+"Query Tuner"
+"Database Health & Resources"
+"Blocking & Transactions"
+"Connectivity & Services"
+"OS & Noisy Neighbors"
+"RAC & Clusterware"
+"Storage & Capacity"
+"Network"
+"Data Guard"
+"RMAN & Recovery"
+"Jobs, Changes & Lifecycle"
+"Replication / GoldenGate"
+Small text below tiles "Modules request additional evidence through the shared orchestrator."
+Under main content two bottom panels:
+Left amber outline title "Initial demo" text "Local Python + SQL*Plus • Read-only / as sysdba" newline "DBA / V$ / GV$ / ASH / AWR evidence" newline "Query Tuner + shared core + HTML report" newline "No internet or LLM dependency at runtime".
+Right navy outline title "Future integrations" text "Inventory database • Application telemetry" newline "Replaceable MCP access adapter" newline "Optional LLM explanation + conversational UI".
+Footer on white with three short separated principles "Read-only collection" | "Explainable findings and evidence gaps" | "DBA-controlled remediation".
+Make diagram accurate: collection is controlled and read-only; LLM is optional later, outside diagnostic engine. Do not show automatic fixing. Avoid guarantees of 100% accuracy. No fake charts, stock photography, database vendor logos or decorative robots. Visually executive-quality and easy to understand in one minute. Keep text verbatim and legible.
