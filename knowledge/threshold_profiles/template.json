@@ -1,0 +1,253 @@
+{
+  "profile_schema_version": "1.0",
+  "profile_id": null,
+  "profile_version": null,
+  "catalog_version": "3.1",
+  "status": "template_unconfigured",
+  "author": null,
+  "approved_by": null,
+  "approved_on": null,
+  "scope": {
+    "database": null,
+    "con_id": null,
+    "sql_family": null,
+    "workload": null
+  },
+  "notes": "Template only. Every value is null by design (P8). Copy, set values from lab/production calibration evidence with rationale, and record approval. No defaults are implied.",
+  "values": {
+    "minimum_samples": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "minimum_baseline": {
+      "value": null,
+      "unit": "native_unit",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "dependency_depth": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "estimate_error_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "material_temp_bytes": {
+      "value": null,
+      "unit": "bytes_per_execution",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "resource_share": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "controlled_cost_gain": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "material_deviation": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "distribution_skew_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "joint_dependence_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "starts_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "operation_activity_share": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "child_count_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "plan_count_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "px_skew_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "spill_ratio_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "unexpected_partition_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "partition_count_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "frequency_deviation_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "result_rows_bound": {
+      "value": null,
+      "unit": "rows_per_execution",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "workload_bias_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "contributor_share": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "read_latency_bound": {
+      "value": null,
+      "unit": "seconds_per_wait",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "blocker_count_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "concurrency_deviation_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "temp_budget_bytes": {
+      "value": null,
+      "unit": "bytes",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "common_path_work_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "rm_pressure_share": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "instance_skew_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "allocation_utilization_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "host_busy_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "host_queue_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "victim_cpu_share_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "materialization_work_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "hard_parse_rate_bound": {
+      "value": null,
+      "unit": "parses_per_second",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "parse_time_share_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "soft_parse_rate_bound": {
+      "value": null,
+      "unit": "parses_per_second",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "invalidation_rate_bound": {
+      "value": null,
+      "unit": "invalidations_per_second",
+      "rationale": null,
+      "calibration_refs": []
+    },
+    "healthy_coverage": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": []
+    }
+  }
+}

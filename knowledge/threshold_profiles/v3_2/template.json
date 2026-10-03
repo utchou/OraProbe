@@ -1,0 +1,292 @@
+{
+  "profile_schema_version": "1.0",
+  "profile_id": null,
+  "profile_version": null,
+  "catalog_version": "3.2",
+  "status": "template_unconfigured",
+  "author": null,
+  "approved_by": null,
+  "approved_on": null,
+  "scope": {
+    "database": null,
+    "con_id": null,
+    "sql_family": null,
+    "workload": null
+  },
+  "notes": "Template only. Every value is null by design (P8). No defaults are implied.",
+  "values": {
+    "minimum_samples": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "minimum_baseline": {
+      "value": null,
+      "unit": "native_unit",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "dependency_depth": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "estimate_error_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "material_temp_bytes": {
+      "value": null,
+      "unit": "bytes_per_execution",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "resource_share": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "controlled_cost_gain": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "material_deviation": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "distribution_skew_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "joint_dependence_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "starts_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "operation_activity_share": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "child_count_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "plan_count_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "px_skew_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "spill_ratio_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "unexpected_partition_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "partition_count_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "frequency_deviation_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "result_rows_bound": {
+      "value": null,
+      "unit": "rows_per_execution",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "workload_bias_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "contributor_share": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "read_latency_bound": {
+      "value": null,
+      "unit": "seconds_per_wait",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "blocker_count_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "concurrency_deviation_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "temp_budget_bytes": {
+      "value": null,
+      "unit": "bytes",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "common_path_work_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "rm_pressure_share": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "instance_skew_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "allocation_utilization_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "host_busy_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "host_queue_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "victim_cpu_share_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "materialization_work_bound": {
+      "value": null,
+      "unit": "count",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "hard_parse_rate_bound": {
+      "value": null,
+      "unit": "parses_per_second",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "parse_time_share_bound": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "soft_parse_rate_bound": {
+      "value": null,
+      "unit": "parses_per_second",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "invalidation_rate_bound": {
+      "value": null,
+      "unit": "invalidations_per_second",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    },
+    "healthy_coverage": {
+      "value": null,
+      "unit": "ratio",
+      "rationale": null,
+      "calibration_refs": [],
+      "bound_kinds_accepted_note": "Comparison semantics follow contract.bound_policy"
+    }
+  }
+}

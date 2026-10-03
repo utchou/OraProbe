@@ -1,0 +1,1163 @@
+{
+  "oracle_version": "19c",
+  "reviewed_on": "2026-10-03",
+  "scope": "Offline reviewed source/column/pack allowlist, not a live database DESCRIBE",
+  "catalog_version": "3.1",
+  "predecessor": {
+    "path": "knowledge/sql_tuning_sources_19c.json",
+    "sha256": "c5564b5d55494eda7e629f39535fbcfdd17b5998059d9f9cfb8c106a3b771cba"
+  },
+  "sources": [
+    {
+      "id": "V$SQL",
+      "name": "V$SQL",
+      "kind": "oracle_view",
+      "columns": [
+        "SQL_ID",
+        "SQL_FULLTEXT",
+        "CHILD_NUMBER",
+        "CHILD_ADDRESS",
+        "FIRST_LOAD_TIME",
+        "LAST_LOAD_TIME",
+        "EXECUTIONS",
+        "END_OF_FETCH_COUNT",
+        "CPU_TIME",
+        "ELAPSED_TIME",
+        "BUFFER_GETS",
+        "DISK_READS",
+        "ROWS_PROCESSED",
+        "PARSE_CALLS",
+        "LOADS",
+        "INVALIDATIONS",
+        "EXACT_MATCHING_SIGNATURE",
+        "FORCE_MATCHING_SIGNATURE",
+        "PLAN_HASH_VALUE",
+        "FULL_PLAN_HASH_VALUE",
+        "MODULE",
+        "ACTION",
+        "SERVICE",
+        "PARSING_SCHEMA_NAME",
+        "IS_BIND_SENSITIVE",
+        "IS_BIND_AWARE",
+        "OPTIMIZER_ENV_HASH_VALUE",
+        "SQL_PLAN_BASELINE",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SQL.html"
+    },
+    {
+      "id": "V$SQL_PLAN",
+      "name": "V$SQL_PLAN",
+      "kind": "oracle_view",
+      "columns": [
+        "SQL_ID",
+        "CHILD_NUMBER",
+        "ID",
+        "PARENT_ID",
+        "OPERATION",
+        "OPTIONS",
+        "OBJECT_OWNER",
+        "OBJECT_NAME",
+        "OBJECT#",
+        "OBJECT_ALIAS",
+        "CARDINALITY",
+        "ACCESS_PREDICATES",
+        "FILTER_PREDICATES",
+        "PARTITION_START",
+        "PARTITION_STOP",
+        "OTHER_XML",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SQL_PLAN.html"
+    },
+    {
+      "id": "V$SQL_PLAN_STATISTICS_ALL",
+      "name": "V$SQL_PLAN_STATISTICS_ALL",
+      "kind": "oracle_view",
+      "columns": [
+        "SQL_ID",
+        "CHILD_NUMBER",
+        "ID",
+        "CARDINALITY",
+        "LAST_STARTS",
+        "LAST_OUTPUT_ROWS",
+        "LAST_CR_BUFFER_GETS",
+        "LAST_CU_BUFFER_GETS",
+        "LAST_DISK_READS",
+        "LAST_DISK_WRITES",
+        "LAST_ELAPSED_TIME",
+        "LAST_MEMORY_USED",
+        "ESTIMATED_OPTIMAL_SIZE",
+        "LAST_TEMPSEG_SIZE",
+        "LAST_EXECUTION",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SQL_PLAN_STATISTICS_ALL.html"
+    },
+    {
+      "id": "V$SQL_BIND_CAPTURE",
+      "name": "V$SQL_BIND_CAPTURE",
+      "kind": "oracle_view",
+      "columns": [
+        "SQL_ID",
+        "CHILD_NUMBER",
+        "POSITION",
+        "DATATYPE_STRING",
+        "MAX_LENGTH",
+        "WAS_CAPTURED",
+        "LAST_CAPTURED",
+        "VALUE_STRING",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SQL_BIND_CAPTURE.html"
+    },
+    {
+      "id": "V$SQL_SHARED_CURSOR",
+      "name": "V$SQL_SHARED_CURSOR",
+      "kind": "oracle_view",
+      "columns": [
+        "SQL_ID",
+        "CHILD_NUMBER",
+        "BIND_MISMATCH",
+        "OPTIMIZER_MISMATCH",
+        "STATS_ROW_MISMATCH",
+        "USER_BIND_PEEK_MISMATCH",
+        "BIND_EQUIV_FAILURE",
+        "ROLL_INVALID_MISMATCH",
+        "REASON",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SQL_SHARED_CURSOR.html"
+    },
+    {
+      "id": "V$SQL_WORKAREA",
+      "name": "V$SQL_WORKAREA",
+      "kind": "oracle_view",
+      "columns": [
+        "SQL_ID",
+        "CHILD_NUMBER",
+        "OPERATION_ID",
+        "WORKAREA_ADDRESS",
+        "OPERATION_TYPE",
+        "POLICY",
+        "ESTIMATED_OPTIMAL_SIZE",
+        "ESTIMATED_ONEPASS_SIZE",
+        "LAST_MEMORY_USED",
+        "LAST_EXECUTION",
+        "TOTAL_EXECUTIONS",
+        "OPTIMAL_EXECUTIONS",
+        "ONEPASS_EXECUTIONS",
+        "MULTIPASSES_EXECUTIONS",
+        "MAX_TEMPSEG_SIZE",
+        "LAST_TEMPSEG_SIZE",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SQL_WORKAREA.html"
+    },
+    {
+      "id": "V$SQL_WORKAREA_ACTIVE",
+      "name": "V$SQL_WORKAREA_ACTIVE",
+      "kind": "oracle_view",
+      "columns": [
+        "SQL_ID",
+        "SQL_EXEC_START",
+        "SQL_EXEC_ID",
+        "SID",
+        "QCINST_ID",
+        "QCSID",
+        "OPERATION_ID",
+        "WORKAREA_ADDRESS",
+        "OPERATION_TYPE",
+        "EXPECTED_SIZE",
+        "ACTUAL_MEM_USED",
+        "MAX_MEM_USED",
+        "NUMBER_PASSES",
+        "TEMPSEG_SIZE",
+        "TABLESPACE",
+        "SEGRFNO#",
+        "SEGBLK#",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SQL_WORKAREA_ACTIVE.html"
+    },
+    {
+      "id": "V$TEMPSEG_USAGE",
+      "name": "V$TEMPSEG_USAGE",
+      "kind": "oracle_view",
+      "columns": [
+        "SESSION_ADDR",
+        "SESSION_NUM",
+        "SQL_ID",
+        "SQL_ID_TEMPSEG",
+        "TABLESPACE",
+        "SEGTYPE",
+        "BLOCKS",
+        "SEGRFNO#",
+        "SEGBLK#",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-TEMPSEG_USAGE.html"
+    },
+    {
+      "id": "V$SESSION",
+      "name": "V$SESSION",
+      "kind": "oracle_view",
+      "columns": [
+        "SID",
+        "SERIAL#",
+        "SADDR",
+        "SQL_ID",
+        "SQL_CHILD_NUMBER",
+        "SQL_EXEC_START",
+        "SQL_EXEC_ID",
+        "STATUS",
+        "STATE",
+        "EVENT",
+        "WAIT_CLASS",
+        "RESOURCE_CONSUMER_GROUP",
+        "MODULE",
+        "ACTION",
+        "SERVICE_NAME",
+        "BLOCKING_SESSION_STATUS",
+        "BLOCKING_INSTANCE",
+        "BLOCKING_SESSION",
+        "FINAL_BLOCKING_INSTANCE",
+        "FINAL_BLOCKING_SESSION",
+        "ROW_WAIT_OBJ#",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SESSION.html"
+    },
+    {
+      "id": "V$SESSION_EVENT",
+      "name": "V$SESSION_EVENT",
+      "kind": "oracle_view",
+      "columns": [
+        "SID",
+        "EVENT",
+        "TOTAL_WAITS",
+        "TIME_WAITED_MICRO",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SESSION_EVENT.html"
+    },
+    {
+      "id": "V$SYSSTAT",
+      "name": "V$SYSSTAT",
+      "kind": "oracle_view",
+      "columns": [
+        "NAME",
+        "VALUE",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SYSSTAT.html"
+    },
+    {
+      "id": "V$SYS_TIME_MODEL",
+      "name": "V$SYS_TIME_MODEL",
+      "kind": "oracle_view",
+      "columns": [
+        "STAT_NAME",
+        "VALUE",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SYS_TIME_MODEL.html"
+    },
+    {
+      "id": "V$SYSTEM_EVENT",
+      "name": "V$SYSTEM_EVENT",
+      "kind": "oracle_view",
+      "columns": [
+        "EVENT",
+        "TOTAL_WAITS",
+        "TIME_WAITED_MICRO",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SYSTEM_EVENT.html"
+    },
+    {
+      "id": "V$EVENT_NAME",
+      "name": "V$EVENT_NAME",
+      "kind": "oracle_view",
+      "columns": [
+        "NAME",
+        "WAIT_CLASS",
+        "PARAMETER1",
+        "PARAMETER2",
+        "PARAMETER3",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-EVENT_NAME.html"
+    },
+    {
+      "id": "V$PX_SESSION",
+      "name": "V$PX_SESSION",
+      "kind": "oracle_view",
+      "columns": [
+        "SID",
+        "SERIAL#",
+        "QCSID",
+        "QCSERIAL#",
+        "QCINST_ID",
+        "SERVER_GROUP",
+        "SERVER_SET",
+        "DEGREE",
+        "REQ_DEGREE",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-PX_SESSION.html"
+    },
+    {
+      "id": "V$PQ_TQSTAT",
+      "name": "V$PQ_TQSTAT",
+      "kind": "oracle_view",
+      "columns": [
+        "DFO_NUMBER",
+        "TQ_ID",
+        "SERVER_TYPE",
+        "NUM_ROWS",
+        "BYTES",
+        "PROCESS",
+        "INSTANCE",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-PQ_TQSTAT.html"
+    },
+    {
+      "id": "V$PGASTAT",
+      "name": "V$PGASTAT",
+      "kind": "oracle_view",
+      "columns": [
+        "NAME",
+        "VALUE",
+        "UNIT",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-PGASTAT.html"
+    },
+    {
+      "id": "V$PARAMETER",
+      "name": "V$PARAMETER",
+      "kind": "oracle_view",
+      "columns": [
+        "NAME",
+        "VALUE",
+        "ISDEFAULT",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-PARAMETER.html"
+    },
+    {
+      "id": "V$RSRC_PLAN",
+      "name": "V$RSRC_PLAN",
+      "kind": "oracle_view",
+      "columns": [
+        "NAME",
+        "IS_TOP_PLAN",
+        "CPU_MANAGED",
+        "INSTANCE_CAGING",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-RSRC_PLAN.html"
+    },
+    {
+      "id": "V$RSRC_PLAN_HISTORY",
+      "name": "V$RSRC_PLAN_HISTORY",
+      "kind": "oracle_view",
+      "columns": [
+        "SEQUENCE#",
+        "NAME",
+        "START_TIME",
+        "END_TIME",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-RSRC_PLAN_HISTORY.html"
+    },
+    {
+      "id": "V$RSRC_CONSUMER_GROUP",
+      "name": "V$RSRC_CONSUMER_GROUP",
+      "kind": "oracle_view",
+      "columns": [
+        "ID",
+        "NAME",
+        "ACTIVE_SESSIONS",
+        "EXECUTION_WAITERS",
+        "CONSUMED_CPU_TIME",
+        "CPU_WAITS",
+        "CPU_WAIT_TIME",
+        "QUEUE_LENGTH",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-RSRC_CONSUMER_GROUP.html"
+    },
+    {
+      "id": "V$RSRC_SESSION_INFO",
+      "name": "V$RSRC_SESSION_INFO",
+      "kind": "oracle_view",
+      "columns": [
+        "SID",
+        "CURRENT_CONSUMER_GROUP_ID",
+        "STATE",
+        "CONSUMED_CPU_TIME",
+        "CPU_WAIT_TIME",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-RSRC_SESSION_INFO.html"
+    },
+    {
+      "id": "V$RSRCMGRMETRIC",
+      "name": "V$RSRCMGRMETRIC",
+      "kind": "oracle_view",
+      "columns": [
+        "BEGIN_TIME",
+        "END_TIME",
+        "SEQUENCE#",
+        "CONSUMER_GROUP_ID",
+        "CONSUMER_GROUP_NAME",
+        "CPU_CONSUMED_TIME",
+        "CPU_WAIT_TIME",
+        "NUM_CPUS",
+        "RUNNING_SESSIONS_LIMIT",
+        "AVG_RUNNING_SESSIONS",
+        "AVG_WAITING_SESSIONS",
+        "CPU_UTILIZATION_LIMIT",
+        "AVG_CPU_UTILIZATION",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-RSRCMGRMETRIC.html"
+    },
+    {
+      "id": "V$RSRCMGRMETRIC_HISTORY",
+      "name": "V$RSRCMGRMETRIC_HISTORY",
+      "kind": "oracle_view",
+      "columns": [
+        "BEGIN_TIME",
+        "END_TIME",
+        "SEQUENCE#",
+        "CONSUMER_GROUP_ID",
+        "CONSUMER_GROUP_NAME",
+        "CPU_CONSUMED_TIME",
+        "CPU_WAIT_TIME",
+        "NUM_CPUS",
+        "AVG_WAITING_SESSIONS",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-RSRCMGRMETRIC_HISTORY.html"
+    },
+    {
+      "id": "DBA_RSRC_PLAN_DIRECTIVES",
+      "name": "DBA_RSRC_PLAN_DIRECTIVES",
+      "kind": "oracle_view",
+      "columns": [
+        "PLAN",
+        "GROUP_OR_SUBPLAN",
+        "TYPE",
+        "MGMT_P1",
+        "MGMT_P2",
+        "MGMT_P3",
+        "MGMT_P4",
+        "MGMT_P5",
+        "MGMT_P6",
+        "MGMT_P7",
+        "MGMT_P8",
+        "UTILIZATION_LIMIT",
+        "ACTIVE_SESS_POOL_P1",
+        "PARALLEL_DEGREE_LIMIT_P1",
+        "PARALLEL_SERVER_LIMIT"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_RSRC_PLAN_DIRECTIVES.html"
+    },
+    {
+      "id": "DBA_TABLES",
+      "name": "DBA_TABLES",
+      "kind": "oracle_view",
+      "columns": [
+        "OWNER",
+        "TABLE_NAME",
+        "NUM_ROWS",
+        "BLOCKS",
+        "LAST_ANALYZED"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_TABLES.html"
+    },
+    {
+      "id": "DBA_TAB_STATISTICS",
+      "name": "DBA_TAB_STATISTICS",
+      "kind": "oracle_view",
+      "columns": [
+        "OWNER",
+        "TABLE_NAME",
+        "PARTITION_NAME",
+        "OBJECT_TYPE",
+        "NUM_ROWS",
+        "LAST_ANALYZED",
+        "STALE_STATS"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_TAB_STATISTICS.html"
+    },
+    {
+      "id": "DBA_TAB_COL_STATISTICS",
+      "name": "DBA_TAB_COL_STATISTICS",
+      "kind": "oracle_view",
+      "columns": [
+        "OWNER",
+        "TABLE_NAME",
+        "COLUMN_NAME",
+        "NUM_DISTINCT",
+        "DENSITY",
+        "HISTOGRAM",
+        "NUM_BUCKETS",
+        "LAST_ANALYZED"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_TAB_COL_STATISTICS.html"
+    },
+    {
+      "id": "DBA_HISTOGRAMS",
+      "name": "DBA_HISTOGRAMS",
+      "kind": "oracle_view",
+      "columns": [
+        "OWNER",
+        "TABLE_NAME",
+        "COLUMN_NAME",
+        "ENDPOINT_NUMBER",
+        "ENDPOINT_VALUE",
+        "ENDPOINT_ACTUAL_VALUE"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_HISTOGRAMS.html"
+    },
+    {
+      "id": "DBA_TAB_COLUMNS",
+      "name": "DBA_TAB_COLUMNS",
+      "kind": "oracle_view",
+      "columns": [
+        "OWNER",
+        "TABLE_NAME",
+        "COLUMN_NAME",
+        "DATA_TYPE",
+        "DATA_LENGTH",
+        "DATA_PRECISION",
+        "DATA_SCALE"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_TAB_COLUMNS.html"
+    },
+    {
+      "id": "DBA_STAT_EXTENSIONS",
+      "name": "DBA_STAT_EXTENSIONS",
+      "kind": "oracle_view",
+      "columns": [
+        "OWNER",
+        "TABLE_NAME",
+        "EXTENSION_NAME",
+        "EXTENSION"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_STAT_EXTENSIONS.html"
+    },
+    {
+      "id": "DBA_TAB_MODIFICATIONS",
+      "name": "DBA_TAB_MODIFICATIONS",
+      "kind": "oracle_view",
+      "columns": [
+        "TABLE_OWNER",
+        "TABLE_NAME",
+        "PARTITION_NAME",
+        "INSERTS",
+        "UPDATES",
+        "DELETES",
+        "TIMESTAMP"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_TAB_MODIFICATIONS.html"
+    },
+    {
+      "id": "DBA_INDEXES",
+      "name": "DBA_INDEXES",
+      "kind": "oracle_view",
+      "columns": [
+        "OWNER",
+        "INDEX_NAME",
+        "TABLE_OWNER",
+        "TABLE_NAME",
+        "INDEX_TYPE",
+        "STATUS",
+        "VISIBILITY",
+        "PARTITIONED",
+        "CLUSTERING_FACTOR"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_INDEXES.html"
+    },
+    {
+      "id": "DBA_IND_COLUMNS",
+      "name": "DBA_IND_COLUMNS",
+      "kind": "oracle_view",
+      "columns": [
+        "INDEX_OWNER",
+        "INDEX_NAME",
+        "TABLE_OWNER",
+        "TABLE_NAME",
+        "COLUMN_NAME",
+        "COLUMN_POSITION",
+        "DESCEND"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_IND_COLUMNS.html"
+    },
+    {
+      "id": "DBA_IND_STATISTICS",
+      "name": "DBA_IND_STATISTICS",
+      "kind": "oracle_view",
+      "columns": [
+        "OWNER",
+        "INDEX_NAME",
+        "PARTITION_NAME",
+        "NUM_ROWS",
+        "LEAF_BLOCKS",
+        "DISTINCT_KEYS",
+        "CLUSTERING_FACTOR",
+        "LAST_ANALYZED"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_IND_STATISTICS.html"
+    },
+    {
+      "id": "DBA_TAB_PARTITIONS",
+      "name": "DBA_TAB_PARTITIONS",
+      "kind": "oracle_view",
+      "columns": [
+        "TABLE_OWNER",
+        "TABLE_NAME",
+        "PARTITION_NAME",
+        "PARTITION_POSITION",
+        "NUM_ROWS",
+        "BLOCKS",
+        "LAST_ANALYZED"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_TAB_PARTITIONS.html"
+    },
+    {
+      "id": "DBA_IND_PARTITIONS",
+      "name": "DBA_IND_PARTITIONS",
+      "kind": "oracle_view",
+      "columns": [
+        "INDEX_OWNER",
+        "INDEX_NAME",
+        "PARTITION_NAME",
+        "STATUS",
+        "PARTITION_POSITION"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_IND_PARTITIONS.html"
+    },
+    {
+      "id": "DBA_DEPENDENCIES",
+      "name": "DBA_DEPENDENCIES",
+      "kind": "oracle_view",
+      "columns": [
+        "OWNER",
+        "NAME",
+        "TYPE",
+        "REFERENCED_OWNER",
+        "REFERENCED_NAME",
+        "REFERENCED_TYPE",
+        "REFERENCED_LINK_NAME"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_DEPENDENCIES.html"
+    },
+    {
+      "id": "DBA_VIEWS",
+      "name": "DBA_VIEWS",
+      "kind": "oracle_view",
+      "columns": [
+        "OWNER",
+        "VIEW_NAME",
+        "TEXT",
+        "TEXT_LENGTH"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_VIEWS.html"
+    },
+    {
+      "id": "DBA_SQL_PLAN_BASELINES",
+      "name": "DBA_SQL_PLAN_BASELINES",
+      "kind": "oracle_view",
+      "columns": [
+        "SIGNATURE",
+        "SQL_HANDLE",
+        "PLAN_NAME",
+        "ENABLED",
+        "ACCEPTED",
+        "FIXED",
+        "REPRODUCED",
+        "ORIGIN",
+        "PARSING_SCHEMA_NAME"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_SQL_PLAN_BASELINES.html"
+    },
+    {
+      "id": "DBA_TABLESPACES",
+      "name": "DBA_TABLESPACES",
+      "kind": "oracle_view",
+      "columns": [
+        "TABLESPACE_NAME",
+        "BLOCK_SIZE",
+        "CONTENTS"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_TABLESPACES.html"
+    },
+    {
+      "id": "V$UNDOSTAT",
+      "name": "V$UNDOSTAT",
+      "kind": "oracle_view",
+      "columns": [
+        "BEGIN_TIME",
+        "END_TIME",
+        "SSOLDERRCNT",
+        "NOSPACEERRCNT",
+        "MAXQUERYLEN",
+        "MAXQUERYID",
+        "TUNED_UNDORETENTION",
+        "UNXPSTEALCNT",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-UNDOSTAT.html"
+    },
+    {
+      "id": "V$SEGMENT_STATISTICS",
+      "name": "V$SEGMENT_STATISTICS",
+      "kind": "oracle_view",
+      "columns": [
+        "OWNER",
+        "OBJECT_NAME",
+        "SUBOBJECT_NAME",
+        "OBJ#",
+        "DATAOBJ#",
+        "STATISTIC_NAME",
+        "VALUE",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SEGMENT_STATISTICS.html"
+    },
+    {
+      "id": "V$SQL_CS_SELECTIVITY",
+      "name": "V$SQL_CS_SELECTIVITY",
+      "kind": "oracle_view",
+      "columns": [
+        "SQL_ID",
+        "CHILD_NUMBER",
+        "PREDICATE",
+        "RANGE_ID",
+        "LOW",
+        "HIGH",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SQL_CS_SELECTIVITY.html"
+    },
+    {
+      "id": "V$SQL_CS_STATISTICS",
+      "name": "V$SQL_CS_STATISTICS",
+      "kind": "oracle_view",
+      "columns": [
+        "SQL_ID",
+        "CHILD_NUMBER",
+        "BIND_SET_HASH_VALUE",
+        "PEEKED",
+        "EXECUTIONS",
+        "ROWS_PROCESSED",
+        "BUFFER_GETS",
+        "CPU_TIME",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SQL_CS_STATISTICS.html"
+    },
+    {
+      "id": "V$SQL_CS_HISTOGRAM",
+      "name": "V$SQL_CS_HISTOGRAM",
+      "kind": "oracle_view",
+      "columns": [
+        "SQL_ID",
+        "CHILD_NUMBER",
+        "BUCKET_ID",
+        "COUNT",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SQL_CS_HISTOGRAM.html"
+    },
+    {
+      "id": "V$ACTIVE_SESSION_HISTORY",
+      "name": "V$ACTIVE_SESSION_HISTORY",
+      "kind": "oracle_view",
+      "columns": [
+        "SAMPLE_TIME",
+        "SAMPLE_TIME_UTC",
+        "USECS_PER_ROW",
+        "SESSION_ID",
+        "SESSION_SERIAL#",
+        "SQL_ID",
+        "SQL_EXEC_ID",
+        "SQL_EXEC_START",
+        "SQL_CHILD_NUMBER",
+        "SQL_PLAN_LINE_ID",
+        "SESSION_STATE",
+        "EVENT",
+        "WAIT_CLASS",
+        "QC_INSTANCE_ID",
+        "QC_SESSION_ID",
+        "QC_SESSION_SERIAL#",
+        "CONSUMER_GROUP_ID",
+        "MODULE",
+        "ACTION",
+        "SERVICE_HASH",
+        "SQL_PLAN_HASH_VALUE",
+        "IS_SQLID_CURRENT",
+        "TEMP_SPACE_ALLOCATED",
+        "TM_DELTA_CPU_TIME",
+        "TM_DELTA_TIME",
+        "CON_ID"
+      ],
+      "requires_all": [
+        "diagnostics_pack"
+      ],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-ACTIVE_SESSION_HISTORY.html",
+      "revised_on": "2026-10-03"
+    },
+    {
+      "id": "DBA_HIST_ACTIVE_SESS_HISTORY",
+      "name": "DBA_HIST_ACTIVE_SESS_HISTORY",
+      "kind": "oracle_view",
+      "columns": [
+        "DBID",
+        "INSTANCE_NUMBER",
+        "SNAP_ID",
+        "SAMPLE_TIME",
+        "SAMPLE_TIME_UTC",
+        "USECS_PER_ROW",
+        "SESSION_ID",
+        "SESSION_SERIAL#",
+        "SQL_ID",
+        "SQL_EXEC_ID",
+        "SQL_EXEC_START",
+        "SQL_PLAN_LINE_ID",
+        "SESSION_STATE",
+        "EVENT",
+        "QC_INSTANCE_ID",
+        "QC_SESSION_ID",
+        "QC_SESSION_SERIAL#",
+        "CONSUMER_GROUP_ID",
+        "WAIT_CLASS",
+        "SQL_PLAN_HASH_VALUE",
+        "IS_SQLID_CURRENT",
+        "TEMP_SPACE_ALLOCATED",
+        "TM_DELTA_CPU_TIME",
+        "TM_DELTA_TIME",
+        "CON_ID"
+      ],
+      "requires_all": [
+        "diagnostics_pack"
+      ],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_HIST_ACTIVE_SESS_HISTORY.html",
+      "revised_on": "2026-10-03"
+    },
+    {
+      "id": "DBA_HIST_SQLSTAT",
+      "name": "DBA_HIST_SQLSTAT",
+      "kind": "oracle_view",
+      "columns": [
+        "DBID",
+        "INSTANCE_NUMBER",
+        "SNAP_ID",
+        "SQL_ID",
+        "PLAN_HASH_VALUE",
+        "EXECUTIONS_DELTA",
+        "CPU_TIME_DELTA",
+        "ELAPSED_TIME_DELTA",
+        "BUFFER_GETS_DELTA",
+        "DISK_READS_DELTA",
+        "ROWS_PROCESSED_DELTA"
+      ],
+      "requires_all": [
+        "diagnostics_pack"
+      ],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_HIST_SQLSTAT.html"
+    },
+    {
+      "id": "DBA_HIST_SQL_PLAN",
+      "name": "DBA_HIST_SQL_PLAN",
+      "kind": "oracle_view",
+      "columns": [
+        "DBID",
+        "SQL_ID",
+        "PLAN_HASH_VALUE",
+        "ID",
+        "PARENT_ID",
+        "OPERATION",
+        "OPTIONS",
+        "OBJECT_OWNER",
+        "OBJECT_NAME",
+        "CARDINALITY",
+        "ACCESS_PREDICATES",
+        "FILTER_PREDICATES"
+      ],
+      "requires_all": [
+        "diagnostics_pack"
+      ],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_HIST_SQL_PLAN.html"
+    },
+    {
+      "id": "V$SQL_MONITOR",
+      "name": "V$SQL_MONITOR",
+      "kind": "oracle_view",
+      "columns": [
+        "SQL_ID",
+        "SQL_EXEC_START",
+        "SQL_EXEC_ID",
+        "SID",
+        "SESSION_SERIAL#",
+        "PX_QCINST_ID",
+        "PX_QCSID",
+        "CPU_TIME",
+        "ELAPSED_TIME",
+        "BUFFER_GETS",
+        "PHYSICAL_READ_BYTES",
+        "PHYSICAL_WRITE_BYTES",
+        "STATUS",
+        "KEY",
+        "PROCESS_NAME",
+        "SQL_PLAN_HASH_VALUE",
+        "SQL_CHILD_ADDRESS",
+        "FIRST_REFRESH_TIME",
+        "LAST_REFRESH_TIME",
+        "PX_SERVER#",
+        "PX_SERVER_SET",
+        "PX_SERVER_GROUP",
+        "PX_IS_CROSS_INSTANCE",
+        "FETCHES",
+        "CON_ID"
+      ],
+      "requires_all": [
+        "diagnostics_pack",
+        "tuning_pack"
+      ],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SQL_MONITOR.html",
+      "revised_on": "2026-10-03"
+    },
+    {
+      "id": "V$SQL_PLAN_MONITOR",
+      "name": "V$SQL_PLAN_MONITOR",
+      "kind": "oracle_view",
+      "columns": [
+        "SQL_ID",
+        "SQL_EXEC_START",
+        "SQL_EXEC_ID",
+        "PLAN_LINE_ID",
+        "STARTS",
+        "OUTPUT_ROWS",
+        "WORKAREA_MEM",
+        "WORKAREA_TEMPSEG",
+        "PHYSICAL_READ_BYTES",
+        "PHYSICAL_WRITE_BYTES",
+        "CON_ID",
+        "KEY",
+        "STATUS",
+        "FIRST_REFRESH_TIME",
+        "LAST_REFRESH_TIME",
+        "SID",
+        "PROCESS_NAME",
+        "SQL_PLAN_HASH_VALUE",
+        "SQL_CHILD_ADDRESS",
+        "PLAN_PARENT_ID",
+        "PLAN_OPERATION",
+        "PLAN_OPTIONS",
+        "PLAN_OBJECT_OWNER",
+        "PLAN_OBJECT_NAME",
+        "PLAN_CARDINALITY",
+        "PLAN_PARTITION_START",
+        "PLAN_PARTITION_STOP",
+        "WORKAREA_MAX_MEM",
+        "WORKAREA_MAX_TEMPSEG"
+      ],
+      "requires_all": [
+        "diagnostics_pack",
+        "tuning_pack"
+      ],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-SQL_PLAN_MONITOR.html",
+      "revised_on": "2026-10-03"
+    },
+    {
+      "id": "DBA_HIST_SNAPSHOT",
+      "name": "DBA_HIST_SNAPSHOT",
+      "kind": "oracle_view",
+      "columns": [
+        "DBID",
+        "INSTANCE_NUMBER",
+        "SNAP_ID",
+        "STARTUP_TIME",
+        "BEGIN_INTERVAL_TIME",
+        "END_INTERVAL_TIME"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_HIST_SNAPSHOT.html"
+    },
+    {
+      "id": "DBMS_XPLAN.DISPLAY_CURSOR",
+      "name": "DBMS_XPLAN.DISPLAY_CURSOR",
+      "kind": "oracle_api",
+      "columns": [],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/arpls/DBMS_XPLAN.html"
+    },
+    {
+      "id": "DBA_HIST_REPORTS",
+      "name": "DBA_HIST_REPORTS",
+      "kind": "oracle_view",
+      "columns": [
+        "SNAP_ID",
+        "DBID",
+        "INSTANCE_NUMBER",
+        "REPORT_ID",
+        "COMPONENT_ID",
+        "SESSION_ID",
+        "SESSION_SERIAL#",
+        "PERIOD_START_TIME",
+        "PERIOD_END_TIME",
+        "GENERATION_TIME",
+        "COMPONENT_NAME",
+        "REPORT_NAME",
+        "KEY1",
+        "KEY2",
+        "KEY3",
+        "KEY4",
+        "REPORT_SUMMARY",
+        "CON_DBID",
+        "CON_ID"
+      ],
+      "requires_all": [
+        "diagnostics_pack",
+        "tuning_pack"
+      ],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_HIST_REPORTS.html",
+      "added_on": "2026-10-03"
+    },
+    {
+      "id": "DBA_HIST_REPORTS_DETAILS",
+      "name": "DBA_HIST_REPORTS_DETAILS",
+      "kind": "oracle_view",
+      "columns": [
+        "SNAP_ID",
+        "DBID",
+        "INSTANCE_NUMBER",
+        "REPORT_ID",
+        "SESSION_ID",
+        "SESSION_SERIAL#",
+        "GENERATION_TIME",
+        "REPORT",
+        "CON_DBID",
+        "CON_ID"
+      ],
+      "requires_all": [
+        "diagnostics_pack",
+        "tuning_pack"
+      ],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_HIST_REPORTS_DETAILS.html",
+      "added_on": "2026-10-03"
+    },
+    {
+      "id": "DBA_HIST_WR_CONTROL",
+      "name": "DBA_HIST_WR_CONTROL",
+      "kind": "oracle_view",
+      "columns": [
+        "DBID",
+        "SNAP_INTERVAL",
+        "RETENTION",
+        "TOPNSQL",
+        "CON_ID",
+        "SRC_DBID",
+        "SRC_DBNAME"
+      ],
+      "requires_all": [
+        "diagnostics_pack"
+      ],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/DBA_HIST_WR_CONTROL.html",
+      "added_on": "2026-10-03"
+    },
+    {
+      "id": "V$INSTANCE",
+      "name": "V$INSTANCE",
+      "kind": "oracle_view",
+      "columns": [
+        "INSTANCE_NUMBER",
+        "INSTANCE_NAME",
+        "HOST_NAME",
+        "VERSION",
+        "VERSION_FULL",
+        "STARTUP_TIME",
+        "STATUS",
+        "PARALLEL",
+        "THREAD#",
+        "INSTANCE_ROLE",
+        "DATABASE_TYPE",
+        "CON_ID"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-INSTANCE.html",
+      "added_on": "2026-10-03"
+    },
+    {
+      "id": "V$DATABASE",
+      "name": "V$DATABASE",
+      "kind": "oracle_view",
+      "columns": [
+        "DBID",
+        "NAME",
+        "DB_UNIQUE_NAME",
+        "DATABASE_ROLE",
+        "OPEN_MODE",
+        "CDB",
+        "CON_ID",
+        "PLATFORM_NAME"
+      ],
+      "requires_all": [],
+      "reference": "https://docs.oracle.com/en/database/oracle/oracle-database/19/refrn/V-DATABASE.html",
+      "added_on": "2026-10-03"
+    }
+  ]
+}
