@@ -3,6 +3,8 @@ You are helping me design and develop an enterprise-grade Oracle database perfor
 
 Treat everything in this prompt as persistent project context. Do not redesign the architecture casually. If you recommend changing an architectural decision, explain clearly why before changing it.
 
+Authoritative architecture requirements (AR-01 to AR-13, 2026-10-06) live in docs/oraprobe_architecture_requirements.md and take precedence where they differ from this context. Section 33 summarizes them.
+
 1. PROJECT OBJECTIVE
 Build an intelligent Oracle troubleshooting platform capable of investigating production issues across:
 
@@ -56,6 +58,8 @@ LLM
 ↓
 Human-readable RCA / explanation / recommendations
 
+(The LLM stage is optional: deterministic analysis is a complete product without it. See AR-02.)
+
 The LLM should NOT receive thousands of raw SQL rows, AWR sections, alert logs or shell-command outputs and be expected to discover everything itself.
 
 The deterministic engine should reduce those into high-value structured evidence.
@@ -75,7 +79,7 @@ recommended next tests
 The LLM then performs higher-level synthesis and explanation.
 
 3. IMPORTANT SAFETY PRINCIPLE
-The system is initially READ-ONLY.
+The system is initially READ-ONLY. Precisely: diagnostic operation is non-destructive. Normal collection never modifies application/business data or database configuration; identifying its own sessions (session metadata) is permitted. Any future state-changing capability needs separate authorization (AR-12).
 
 It must:
 
@@ -90,7 +94,7 @@ All production access should eventually happen through controlled, predefined ca
 Future remediation automation can be considered separately with approvals, validation and rollback mechanisms.
 
 4. TARGET ENVIRONMENT
-The production environment is broadly:
+The current production environment, OraaS (Citi Oracle as a Service), is broadly as below. This describes an environment that OraProbe can diagnose, not an architectural assumption: OraProbe is not coupled to OraaS (AR-04).
 
 Oracle Database 19c
 Oracle RAC
@@ -735,23 +739,26 @@ without restarting everything.
 This context should live in structured session state, not solely in the LLM conversation history.
 
 23. MCP ARCHITECTURE
-MCP should be treated as an integration/capability boundary — not where Oracle diagnostic intelligence lives.
+MCP should be treated as an integration boundary — not where Oracle diagnostic intelligence lives. Authoritative rule: AR-08 in docs/oraprobe_architecture_requirements.md.
+
+MCP (and Capstone) are future integration/adapter layers in front of the OraProbe core. They are never on the mandatory data-collection path. Collectors/providers are native OraProbe core capabilities.
 
 Conceptually:
 
-UI
+Portal / Capstone / LLM
  |
-Investigation Orchestrator
+MCP adapter/client boundary (where applicable)
  |
-Diagnostic Modules
+OraProbe Core (orchestration, diagnostic modules, correlation)
  |
-Capability Interface
+Providers / Collectors
  |
-MCP Adapter
- |
-MCP Server
- |
-Oracle / Linux / OEM / Inventory
+Oracle / OS
+
+If a future enterprise integration uses MCP or another mechanism to obtain specific evidence, it is an optional adapter behind the provider/collector abstraction and never a dependency of the deterministic core.
+
+Superseded (non-authoritative, kept for history): an earlier diagram here placed "Capability Interface -> MCP Adapter -> MCP Server" between the diagnostic modules and Oracle/Linux/OEM/Inventory. It was superseded on 2026-10-06 (decision C-1).
+
 During development we may use FastMCP or another implementation.
 
 Later Citi may provide a company-standard MCP platform.
@@ -784,7 +791,11 @@ Deterministic Python Modules
 
 Enterprise Access
     ↓
-MCP / Capability Layer
+Native providers / collectors (optional adapters behind them; never MCP-dependent — AR-08)
+
+External Integration
+    ↓
+MCP / API adapters in front of the core
 
 AI Reasoning & Interaction
     ↓
@@ -1019,3 +1030,19 @@ The AI is an intelligence and synthesis layer around a strong diagnostic engine 
 
 This is the version I’d use as the project bootstrap prompt when opening a fresh ChatGPT/Claude/Codex session. It captures the important decisions we made through the recent discussions, including the newer UI → structured request → orchestrator → modules → correlation → LLM flow.
 
+
+
+33. ARCHITECTURE REQUIREMENTS (SUMMARY — 2026-10-06)
+Authoritative detail: docs/oraprobe_architecture_requirements.md (AR-01 to AR-11, gaps against V3.2, resolved conflicts, future work). This summary is not authoritative where it differs.
+
+- Evidence-driven cross-module investigation via an Evidence Resolution / Investigation Planner: observe, hypothesize, find missing evidence, resolve the provider, collect only what can resolve an active UNKNOWN, re-evaluate. Never "run every collector", never hard-coded routing trees, never duplicated collectors (AR-01).
+- Two modes, one diagnostic truth: Deterministic Analysis is a complete product without an LLM; AI-Assisted Analysis may explain and request approved evidence, but never overrides evidence, confidence or UNKNOWN (AR-02).
+- SQL execution plan comparison with runtime-evidence explanation (AR-03; QUERY_TUNER_REQUIREMENTS.md).
+- Topology-independent core, topology-aware modules. OraaS (Citi Oracle as a Service) is the current environment OraProbe may diagnose; OraProbe is not coupled to its topology, deployment model, naming, infrastructure or node count (AR-04).
+- Version/capability-aware evidence-source layer: 19c now, 26ai as a target, one core (AR-05).
+- Demo: interactive offline Python CLI that only builds structured requests (AR-06, AR-11; DEMO_SCOPE.md).
+- Headless, presentation-agnostic core shared by CLI, portals, automation, API and MCP/AI consumers (AR-07).
+- MCP/Capstone are future adapters in front of the core, never on the mandatory collection path (AR-08; see section 23).
+- Non-destructive diagnostic operation, not merely 'SELECT-only' (AR-12); OraProbe's own observer effect is bounded and logged (AR-13). Class-B review items form the pre-engine design gate (D-1).
+- Industry failure-mode traceability review (AR-09) and structured assessment of externally supplied production diagnostic scripts (AR-10) are future work.
+- SQL Tuner V3.2 (commit e4b5fe4) remains the frozen knowledge baseline. The October incident remains a permanent acceptance case.

@@ -1,11 +1,14 @@
+[STATUS NOTE - not part of the generation prompt] Updated 2026-10-06 to the authoritative architecture (docs/oraprobe_architecture_requirements.md, AR-08): Portal / Capstone / LLM -> MCP integration/adapter boundary where applicable -> OraProbe Core -> Providers / Collectors -> Oracle / OS. MCP is not a collection dependency. OraProbe-Management-Design.png was generated from the previous version of this prompt; it is OUTDATED/SUPERSEDED (it shows MCP adapters on the evidence-collection side) and must be regenerated after the architecture is sufficiently stable. It has not been regenerated.
+[END STATUS NOTE]
 Use case: infographic-diagram. Generate a new polished single-page landscape executive architecture image, 1536x1024 or larger equivalent, legible typography, generous spacing, white background, deep navy and teal with restrained gold accents. Name exactly "OraProbe" (capital O and P). Title "OraProbe". Subtitle "Oracle & Infrastructure Incident Investigation Platform". Top-right small badge "TARGET END PRODUCT" to accurately convey a designed future product, not already implemented. This visual shows the complete product vision, not demo phases. No demo labels, no phased delivery, no SQL*Plus or SYSDBA implementation detail.
 Hierarchy:
 Top beneath title an understated principle "Deterministic diagnostics • AI-assisted explanation • Read-only investigation".
+Above the workflow a slim band titled "Access channels" with text "CLI  •  Portals  •  API  •  Capstone / LLM via MCP integration boundary", with one arrow into the investigation orchestrator. MCP appears only here, as an optional adapter boundary in front of the OraProbe core; never on the evidence-collection side.
 Main horizontal workflow with five connected polished boxes:
 "DBA workspace" / "Guided controls + conversation" / "Database • Incident window • Symptoms" / "SQL ID when relevant"
 → "Investigation orchestrator" / "Resolve topology and scope" / "Maintain incident context"
 → "Deterministic diagnostic engine" / "Collect and analyze evidence" / "Test competing hypotheses" / "Correlate timelines and rank causes"
-→ "AI synthesis" / "Explain structured findings" / "Answer follow-up questions"
+→ "AI synthesis (optional)" / "Explain structured findings" / "Answer follow-up questions"
 → "Incident report" / "Cause • Impact • Confidence" / "Evidence • Gaps • Next tests" / "Recommended actions"
 Central main wide panel underneath titled "12 connected diagnostic modules". 4 columns by 3 rows, all same styling (no demo differentiation), exact labels:
 "Query Tuner"; "Database Health & Resources"; "Blocking & Transactions"; "Connectivity & Services";
@@ -14,8 +17,8 @@ Central main wide panel underneath titled "12 connected diagnostic modules". 4 c
 Small panel subtitle "Modules share evidence and request deeper investigation through the orchestrator."
 Below modules show a narrow integrated horizontal bar titled "Shared investigation foundation" with text "Inventory & topology  •  Evidence & session store  •  Hypothesis testing  •  Timeline correlation  •  Explainable scoring". Visually connect this foundation to engine/modules.
 Bottom wide panel title "Controlled integrations & evidence sources". Show two rows:
-"Replaceable capability / MCP adapters • Predefined read-only collectors"
+"Native read-only providers / collectors • Optional adapters behind the provider abstraction"
 Then 6 compact source groups with simple line icons: "Oracle / ASH / AWR", "RAC / ASM / Data Guard", "Linux / Storage / Network", "RMAN / GoldenGate", "Inventory / Change records", "Application telemetry".
 Arrows from evidence source layer up toward foundation and diagnostic modules, with clean uncluttered routing. The orchestrator controls capabilities, not AI. AI receives structured findings, never portrayed as executing arbitrary commands. Report is also accessible directly from deterministic engine via a subtle labeled connector "Structured report"; do not overcrowd if not feasible.
 Footer in three separated statements "Runtime + historical investigations" | "Evidence-backed RCA with explicit uncertainty" | "DBA-controlled remediation".
-Design for manager understanding in one minute, professional editorial typography, clear precise spelling, strong alignment, mostly short labels. All twelve modules visible. No made-up metrics or accuracy guarantees. No robotic imagery, no vendor logos, no photography, no code. The final product includes AI and MCP without coupling core diagnostic logic to a specific vendor. Do not mention OraProble anywhere.
+Design for manager understanding in one minute, professional editorial typography, clear precise spelling, strong alignment, mostly short labels. All twelve modules visible. No made-up metrics or accuracy guarantees. No robotic imagery, no vendor logos, no photography, no code. The final product includes optional AI and MCP integration without coupling core diagnostic logic to a specific vendor; the deterministic core works without either. Do not mention OraProble anywhere.
