@@ -1042,7 +1042,7 @@ Authoritative detail: docs/oraprobe_architecture_requirements.md (AR-01 to AR-11
 - Version/capability-aware evidence-source layer: 19c now, 26ai as a target, one core (AR-05).
 - Demo: interactive offline Python CLI that only builds structured requests (AR-06, AR-11; DEMO_SCOPE.md).
 - Headless, presentation-agnostic core shared by CLI, portals, automation, API and MCP/AI consumers (AR-07).
-- MCP/Capstone are future adapters in front of the core, never on the mandatory collection path (AR-08; see section 23).
+- MCP/Capstone are future adapters in front of the core, never on the mandatory collection path (AR-08; see section 23). Integration-boundary reference (non-authoritative, public-safe): docs/reference/capstone_architecture_reference.md.
 - Non-destructive diagnostic operation, not merely 'SELECT-only' (AR-12); OraProbe's own observer effect is bounded and logged (AR-13). Class-B review items form the pre-engine design gate (D-1).
 - Industry failure-mode traceability review (AR-09) and structured assessment of externally supplied production diagnostic scripts (AR-10) are future work.
 - SQL Tuner V3.2 (commit e4b5fe4) remains the frozen knowledge baseline. The October incident remains a permanent acceptance case.

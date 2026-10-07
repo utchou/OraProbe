@@ -7,10 +7,11 @@ Status: **authoritative** platform architecture and product requirements registe
 | Document | Holds |
 | --- | --- |
 | [PROJECT_CONTEXT.md](../PROJECT_CONTEXT.md) | Original project bootstrap context. §33 is a short summary that points here. |
-| This document | Platform requirements AR-01..AR-11, gaps against V3.2, resolved conflicts, future work. **Authoritative where it differs from PROJECT_CONTEXT.md.** |
+| This document | Platform requirements AR-01..AR-13, gaps against V3.2, resolved conflicts, future work. **Authoritative where it differs from PROJECT_CONTEXT.md.** |
 | [QUERY_TUNER_REQUIREMENTS.md](../QUERY_TUNER_REQUIREMENTS.md) | Query Tuner requirements, including AR-03 plan comparison in full. |
 | [DEMO_SCOPE.md](../DEMO_SCOPE.md) | Demo-specific scope, including the AR-06/AR-11 demo interface. |
 | [implementation_readiness_v3_2.md](implementation_readiness_v3_2.md) | V3.2 readiness and engine design-note items. |
+| [reference/capstone_architecture_reference.md](reference/capstone_architecture_reference.md) | Enterprise GenAI platform (Capstone) integration-boundary principles; non-authoritative and sanitized for public use. |
 | [oraprobe_industry_failure_mode_review.md](oraprobe_industry_failure_mode_review.md) | AR-09 failure-mode / best-practice architecture review: traceability, classified actions, potential V3.2 impacts. |
 | `OraProbe-Management-Design-prompt.txt` / `OraProbe-Management-Design.png` | Manager-facing image. The prompt was updated to AR-08 on 2026-10-06. **The PNG is outdated/superseded** (it shows MCP on the evidence-collection side) and needs regeneration once the architecture is stable. |
 
@@ -198,7 +199,7 @@ Authoritative (decision C-1). It supersedes the earlier PROJECT_CONTEXT §23 dia
 
 - **REQ:** if a future enterprise integration uses MCP or another mechanism to obtain specific evidence, it is an optional adapter behind the provider/collector abstraction. It never becomes a dependency of the deterministic core.
 - **REQ:** there is no second SQL Tuner or diagnostic engine inside MCP. Internal contracts remain naturally exposable through MCP/Capstone without redesigning the diagnostic core.
-- **CURRENT:** the Capstone architecture was reviewed separately by the user and is not documented in this repository. No MCP is implemented.
+- **CURRENT:** the Capstone architecture was reviewed separately by the project owner; its source material is not stored in this repository. A sanitized, non-authoritative integration-boundary reference (internal details intentionally omitted) is in [reference/capstone_architecture_reference.md](reference/capstone_architecture_reference.md). No MCP is implemented.
 - **IMPL:** MCP adapter and Capstone integration (later).
 
 ### AR-09 Industry failure-mode / anti-pattern traceability
